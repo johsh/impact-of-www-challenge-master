@@ -1,0 +1,831 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>web-score-enriched</title>
+        <script type="text/javascript" src="d3.v3.js"></script>
+	<style type="text/css">
+		
+			
+		circle {
+			-moz-transition: all 0.5s;
+			-o-transition: all 0.5s;
+			-webkit-transition: all 0.5s;
+			transition: all 0.5s;
+		}
+		circle:hover{
+			fill: orange;
+		}
+		
+		div.tooltip {
+		  position: absolute;           
+		  text-align: left;           
+		  width: 60px;                  
+		  height: 15px;                 
+		  padding: 2px;             
+		  font: 12px sans-serif;        
+		  background: lightsteelblue;   
+		  border: 0px;      
+		  //border-radius: 8px;           
+		  pointer-events: none;         
+		}
+
+		span {
+			background: green;
+			background-color: red;
+		}
+		.label {
+			font-family: sans-serif;
+			font-size: 11px;
+			fill: black;
+			text-anchor: left;
+		}
+		.labelbox {
+			fill: lightgrey;
+			//fill-opacity: .7;			
+		}
+		
+		.xaxis path,
+		.yaxis path,
+		.xaxis line,
+		.yaxis line{
+			fill: none;
+			stroke: black;
+			//shape-rendering: crispEdges;
+		}
+		.xaxis text,
+		.yaxis text,
+		.incometext,
+		.grouptext {
+			font-family: sans-serif;
+			font-size: 11px;
+			pointer-events: none;
+		}
+		
+		.groupbutton:hover {
+			fill: orange;
+		}
+		.groupbutton {
+			stroke-width: 2px,
+			stroke: "white",
+		}
+		
+		.incomeline {			
+			stroke: black;
+			stroke-width: 1;
+			stroke-dasharray: 5,5;
+			shape-rendering: crispEdges;
+		}
+		.incomerect {
+			fill: white;
+		}
+		.incomerect:hover{		
+			fill: LightSalmon;
+			opacity: .2;
+		}
+		
+	</style>
+    </head>
+    <body>
+	<h2>web-score-enriched</h2>
+	<span style="color:blue">aa</span>
+	<p id="reset">reset</p>
+	<p id="acess-electricity">access/electricity</p>
+	<p id="acess-literacy">users vs literacy</p>
+	<p id="score-gdp">score/gdp</p>	
+	
+	<script type = "text/javascript">
+	
+		/********************
+		*	GLOBAL VARs		* 
+		* 		&		   	*
+		* 	BASIC-FUNCTIONS	*
+		*********************/
+		
+		var color = d3.scale.category10();
+		var groupSteps = 6;
+		
+		var gdp = true;
+		
+		var getX = function(d){return d.Web_Index_score;};
+		var getY = function(d){return d.GDP_average;};
+		var getR = function(d){return 8;};//getX(d)/10};
+		
+		var countries;
+		var labelfontsize=11
+		
+		var width = 1000;	
+		var height = 500;
+		var padding = 20;
+		var labelboxpadding = 4;
+		
+		var zooming = false;
+		
+		var data = [];
+		var tt;
+		
+		var div = d3.select("body").append("div")   
+					.attr("class", "tooltip")               
+					.style("opacity", 0);
+		
+		var incomeGroup = function(d){
+			if (d > 12476){
+				return "VERY_HIGH";
+			} else if (d > 4036){
+				return "HIGH";
+			} else if (d > 1026){
+				return "MIDDLE";
+			} else {
+				return "LOW";
+			}
+		};
+		var bl = function(d){
+			return d == "true";
+		}
+				
+		var isActive = function(d,_d){
+			return (//d.Region == _d.Region ||
+					bl(d.European_Union) && bl(_d.European_Union) ||
+					//d.Web_Index_score
+					//incomeGroup(d.GDP_average) == incomeGroup(_d.GDP_average) ||
+					//Universal_Access,Users,Access_Electricity,Assumed,
+					bl(d.African_Union) && bl(_d.African_Union) || 
+					bl(d.OECD) && bl(_d.OECD) ||
+					bl(d.OSCE) && bl(_d.OSCE) ||
+					bl(d.NAFTA) && bl(_d.NAFTA) ||
+					bl(d.MERCOSUR) && bl(_d.MERCOSUR) || 
+					bl(d.OIC) && bl(_d.OIC) ||
+					bl(d.Arab_League) && bl(_d.Arab_League) ||
+					bl(d.ECO) && bl(_d.ECO))
+		}
+		
+		var sameGroup = function(d,_d){
+			return (d.European_Union == _d.European_Union ||
+					d.African_Union == _d.African_Union || 
+					d.OECD == _d.OECD ||
+					d.OSCE == _d.OSCE ||
+					d.NAFTA == _d.NAFTA ||
+					d.MERCOSUR == _d.MERCOSUR || 
+					d.OIC == _d.OIC ||
+					d.Arab_League == _d.Arab_League ||
+					d.ECO == _d.ECO)
+		}
+		
+		var pdist = function(p,_p){
+			return Math.sqrt(Math.pow(p[0]-_p[0], 2) + Math.pow(p[1]-_p[1], 2));
+		}
+		
+		d3.selection.prototype.moveToFront = function() {
+			return this.each(function(){
+				this.parentNode.appendChild(this);
+			});
+		};
+							
+		/************
+		*	SCALES 	* 
+		*	  &		*
+		* 	 SVG	*
+		*************/
+
+		/* SCALES ARE ALWAYS 0-100 */
+		var xScale = d3.scale.linear()
+						.nice() 
+						.domain([0,100])
+						.range([padding,width-3.5*padding]);
+		
+						/*ordinal()
+						.domain(d3.range(82))
+						.rangeBands([padding,width-padding],0.2);						
+						*/
+		var yScale = d3.scale.linear()
+						.nice()
+						.domain([100,0])
+						.range([padding,height-2.5*padding]);
+			
+		var svg = d3.select("body")
+				.append("svg")
+				.attr("width", width)
+				.attr("height", height)
+				.on("click", function(){
+					if (!zooming){ reset(); }
+				});
+
+		var xAxis = d3.svg.axis()
+			.scale(xScale)
+			.orient("bottom")
+			.ticks(10);
+			
+		var yAxis = d3.svg.axis()
+			.scale(yScale)
+			.orient("right")
+			.ticks(10);
+
+		svg.append("g")
+			.attr("class", "xaxis")
+			.attr("transform", "translate(0,"+(height-padding)+")")
+			.call(xAxis);
+
+		svg.append("g")
+			.attr("class", "yaxis")
+			.attr("transform", "translate("+(width-40)+",0)")
+			.call(yAxis);			
+		
+		/****************
+		*	LOAD CSV 	* 
+		*****************/
+		
+		d3.csv("web-score-enriched.csv", function(_data) {			
+			data=_data;
+
+			yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);			
+							  
+			//drawGroup(function(d){return d.MERCOSUR;}, "blue");
+			//drawGroup(function(d){return d.European_Union;}, "black");
+			//drawGroup(function(d){return d.African_Union;}, "red");
+			
+			/********************
+			*	INCOME GROUPS 	* 
+			*********************/
+			var incomeGroups = [{group: "HIGH INCOME", y: d3.max(data, function(d){return getY(d);}), h: 12476},
+								{group: "UPPER MIDDLE INCOME", y:  12476, h: 4036}, 
+								{group: "LOWER MIDDLE INCOME", y: 4036, h: 1026}, 
+								{group: "LOW INCOME", y: 1026, h: 0}];
+
+			svg.selectAll("rect.income")
+				.data(incomeGroups)
+				.enter()
+				.append("rect")
+				.attr({
+					x: xScale(0),
+					y: function(d){return yScale(d.y);},
+					width: xScale(100),
+					height: function(d){return yScale(d.h)-yScale(d.y);},
+					class: "incomerect",
+				})
+
+			svg.selectAll("line.income")
+				.data(incomeGroups)
+				.enter()
+				.append("line")
+				.attr({
+					x1: xScale(0),
+					y1: function(d){return yScale(d.y);},
+					x2: xScale(100),
+					y2: function(d){return yScale(d.y);},
+					class: "incomeline",
+				});		
+				
+			svg.selectAll("text.income")
+				.data(incomeGroups)
+				.enter()
+				.append("text")
+				.text(function(d){return d.group;})
+				.attr({
+					x: padding+2,
+					y: function(d){return yScale(d.y)+10;},					
+					class: "incometext"
+				})
+				
+			/************
+			*	GROUPS 	* 
+			*************/
+		
+			var groups = [//Region
+							{GroupIdx: 0, Group: 'European_Union'},
+							{GroupIdx: 1, Group: 'African_Union'},
+							{GroupIdx: 2, Group: 'OECD'},
+							{GroupIdx: 3, Group: 'NAFTA'},
+							{GroupIdx: 4, Group: 'MERCOSUR'},
+							{GroupIdx: 5, Group: 'OIC'},
+							{GroupIdx: 6, Group: 'Arab_League'},
+							{GroupIdx: 7, Group: 'ECO'}
+						];
+			
+			var groupData = [];
+			var countryGroupLayer = {};
+			var total = 0;
+			countryGroupLayer['peter']=1;
+			tt = countryGroupLayer;
+			
+			groups.forEach(function(g,j){							
+				data.forEach(function(c){									
+					if (bl(c[g.Group])){
+						
+						if (c.Country in countryGroupLayer){
+							countryGroupLayer[c.Country]--;
+						} else {
+							total = 0;
+							groups.forEach(function(g,i){
+								if (bl(c[g.Group])){total++;}
+							})
+							countryGroupLayer[c.Country] = total;							
+						}
+						
+						var newData = {
+							Country: c.Country,
+							Web_Index_score: c.Web_Index_score,
+							GDP_average: c.GDP_average,
+							Universal_Access: c.Universal_Access,
+							Users: c.Users,
+							Access_Electricity: c.Access_Electricity,
+							Layer: countryGroupLayer[c.Country],
+							Group: g.Group,
+							GroupIdx: j,
+							};
+						newData[g.Group] = "true";
+						groupData.push(newData);
+					}
+				})
+			});
+						
+			bk=svg.selectAll("circle.group")
+				.data(groupData)
+				.enter()
+				.append("circle")
+				.attr({
+					class: "group",
+					layer: function(d){return d.Layer;},
+					r: 0,
+					fill: function(d,i){return color(d.GroupIdx);}
+				})
+				.on("mouseover", function(d){
+					/*div.transition()        
+						.duration(200)      
+						.style("opacity", .9)
+						.style("background", color(d.Group));
+					div .html(groups[d.Group])  
+						.style("left", (d3.event.pageX) + 20 + "px")     
+						.style("top", (d3.event.pageY - 20) + "px");    
+						*/
+					if (!zooming){hoverGroup(d)};
+				})				
+				.on("mouseout", function(d){
+					//resetHover();
+				})
+			
+			/****************
+			*	COUNTRIES 	* 
+			*****************/
+		
+			countries = svg.selectAll("circle.country")
+				.data(data)
+				.enter()
+				.append("circle")
+				.attr({					
+					class: "country",
+					//cx: function(d){return xScale(getX(d));},
+					//cy: function(d){return yScale(getY(d));},
+					r: 0, //function(d){return getR(d);},
+					fill: "grey",
+					stroke: "white",
+					"stroke-width": 2
+				})
+				.on("mouseover", function(d) {					
+				
+					div.transition()        
+						.duration(200)      
+						.style("opacity", .9);      
+					div .html(d.Country)  
+						.style("left", (d3.event.pageX) + 20 + "px")     
+						.style("top", (d3.event.pageY - 20) + "px");    
+						
+					if (!zooming){hoverCountry(d)};
+				})                  
+				.on("mouseout", function(d) {       
+					div.transition()        
+						.duration(500)      
+						.style("opacity", 0);   
+						
+					//resetHover();
+				})
+				.on("click", function(d){
+					setFilter(d);					
+				});
+
+			/************
+			*	TEXT 	* 
+			*************/
+
+			svg.selectAll("rect.label")
+				.data(data)
+				.enter()
+				.append("rect")
+				.attr({
+						x: function(d){return xScale(getX(d))-labelboxpadding/2;},//+4*groupSteps;},
+						y: function(d){return yScale(getY(d))-labelboxpadding/2-labelfontsize;},
+						width: function(d){					
+							return 5*d.Country.length+labelboxpadding;
+						},
+						height: labelfontsize+labelboxpadding,
+						opacity: 0,
+						class: "labelbox",
+					});
+						
+			svg.selectAll("text.label")
+				.data(data)
+				.enter()
+				.append("text")
+				.text(function(d){return d.Country;})
+				.attr({
+						x: function(d){return xScale(getX(d));},//+4*groupSteps;},
+						y: function(d){return yScale(getY(d));},
+						opacity: 0,
+						class: "label",
+					});
+			
+			/*labels[0].forEach(function(d){
+				var text = d;
+
+				var bbox = text.getBBox();
+				var rect = svg.append("rect")
+					.attr({
+						x: bbox.x-labelboxpadding/2,
+						y: bbox.y-labelboxpadding/2,
+						width: bbox.width+labelboxpadding,
+						height: bbox.height,
+						class: "labelbox"
+					});			
+
+				var sel = d3.select(d);
+				sel.moveToFront();					
+			})*/
+			
+			updateAll();
+			
+			//groups.push(["[]"])
+			
+			svg.selectAll(".groupbutton")
+				.data(groups)
+				.enter()
+				.append("rect")
+				.attr({
+					x: padding*2,
+					y: function(d,i){return i*20+padding*2;},
+					width: 90,
+					height: 20,					
+					class: "groupbutton",
+					fill: function(d,i){return color(i);},
+				})
+				.on("click", function(d){
+				
+				})
+				.on("mouseover",function(d){
+					console.log("hover " + d.Group);
+					hoverGroup(d);
+				})
+
+			svg.selectAll(".grouptext")
+				.data(groups)
+				.enter()
+				.append("text")
+				.text(function(d){return d.Group.replace("_", " ");})
+				.attr({
+					x: padding*2+5,
+					y: function(d,i){return i*20+padding*2+13;},
+					class: "grouptext",
+				})				
+		});
+		
+		/********************
+		*	BUTTONS etc. 	* 
+		*********************/		
+
+		d3.selectAll("#acess-electricity")
+			.on("click", function(){
+				getX = function(d){return d.Universal_Access};
+				getY = function(d){return d.Access_Electricity};
+				
+				svg.selectAll("circle")
+					.attr("opacity", function(d){if (d.Access_Electricity == "") return 0});
+				gdp = false;					
+				
+				reset();
+			})		
+
+		d3.selectAll("#score-gdp")
+			.on("click", function(){
+				getX = function(d){return d.Web_Index_score};
+				getY = function(d){return d.GDP_average};
+				
+				svg.selectAll("circle")
+					.attr("opacity", 1);
+				gdp = true;	
+				reset();
+			})		
+		
+		d3.selectAll("#reset")
+			.on("click", function(){
+				reset();
+			})	
+		
+		/********************
+		*	LITTLE HELPER 	* 
+		*********************/
+		function updateAll(){	
+			zooming = true;
+
+			svg.selectAll(".incomeline")
+				.transition()
+				.duration(500)
+				.attr({
+					y1: function(d){return yScale(d.y);},
+					y2: function(d){return yScale(d.y);},
+					opacity: function(d){
+						if (!gdp || yScale(d.y) > height-2.5*padding){return 0;}
+						else {return 1;}
+					}
+				})
+
+			svg.selectAll(".incomerect")			
+				.transition()
+				.duration(500)
+				.attr({
+					y: function(d){return yScale(d.y);},
+					height: function(d){return yScale(d.h)-yScale(d.y);},
+					opacity: function(d){
+						if (!gdp || yScale(d.y) > height-2.5*padding){return 0;}
+						else {return 1;}
+					}
+				})				
+				
+			svg.selectAll(".incometext")
+				.transition()
+				.duration(500)
+				.attr({					
+					y: function(d){return yScale(d.y)+11;},
+					opacity: function(d){
+						if (!gdp || yScale(d.y) > height-2.5*padding+10){return 0;}
+						else {return 1;}
+					}
+				})		
+			
+			svg.select(".xaxis")
+				.transition()
+				.duration(500)
+				.call(xAxis);
+				
+			svg.select(".yaxis")
+				.transition()
+				.duration(500)
+				.call(yAxis);
+
+			d3.selectAll("circle.country")
+				.transition()
+				.duration(500)
+				.attr({
+					cx: function(d){return xScale(getX(d));},
+					cy: function(d){return yScale(getY(d));},
+					r: function(d){return getR(d);},
+				});
+				
+			d3.selectAll("circle.group")
+				.transition()
+				.duration(500)				
+				.attr({
+					cx: function(d){return xScale(getX(d))+d.Layer*2;},
+					cy: function(d){return yScale(getY(d))+d.Layer*2;},
+					r: function(d){return getR(d)+groupSteps*d.Layer;},	
+				})
+				.each("end", function(){zooming = false});				
+
+			d3.selectAll(".groupbutton")
+				.attr({
+					fill: function(d,i){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						return color(i);},
+				})
+
+			d3.selectAll(".grouptext")
+				.attr({
+					fill: function(){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						return "black";},
+				})				
+				
+			/*d3.selectAll("text.label")
+				.transition()
+				.duration(500)
+				.attr({
+					x: function(d){return xScale(getX(d))+4*groupSteps;},
+					y: function(d){return yScale(getY(d));},
+				});							
+
+			d3.selectAll("rect")
+				.transition()
+				.duration(500)
+				.attr({
+					x: function(d){return xScale(getX(d))+4*groupSteps-labelboxpadding/2;},
+					y: function(d){return yScale(getY(d))-labelfontsize-labelboxpadding/2;},
+				});						
+*/
+			
+		}
+		
+		function drawGroup(f){
+			var activeData = data.filter(function(d){return f(d) == 1;});
+			var minX = d3.min(activeData, function(d){return getX(d);});
+			var maxX = d3.max(activeData, function(d){return getX(d);});
+			
+			activeData.sort(function(d,_d){return d3.ascending(getX(d), getX(_d));});
+			
+			poly = [];			
+			activeData.forEach(function(d,i){
+				poly.push([xScale(getX(d))-getR(d)*1.5,
+							yScale(getY(d))-getR(d)*1.5]);
+				poly.push([xScale(getX(d))+getR(d)*1.5,
+							yScale(getY(d))-getR(d)*1.5]);
+			});
+			
+			activeData.sort(function(d,_d){return d3.descending(getX(d), getX(_d));});
+			activeData.forEach(function(d,i){
+				poly.push([xScale(getX(d))+getR(d)*1.5,
+							yScale(getY(d))+getR(d)*1.5]);
+				poly.push([xScale(getX(d))-getR(d)*1.5,
+							yScale(getY(d))+getR(d)*1.5]);
+			});
+
+			tt=poly;
+			var s = "";
+			poly.forEach(function(d){s+=d.join(",")+" ";});
+
+			poly=s;			
+			
+			
+			var eu = svg.selectAll("polygon")
+				.data(activeData)
+				.enter()
+				.append("polygon")
+				.attr("points", poly)
+				//.attr("stroke", color)
+				//.attr("stroke-width", 2)
+				.attr("fill");
+		}
+		
+		function reset(){
+			xScale.domain([0,100]);
+			yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);
+			
+			resetHover();			
+			updateAll();
+			
+			d3.selectAll(".group")
+				.attr("fill", function(_d){				
+					return color(_d.GroupIdx);
+				});
+			
+		}
+		
+		function resetHover(){
+			console.log("reset hover");
+			
+			d3.selectAll(".group")
+				.transition()
+				.duration(500)
+				.attr("r", function(_d){						
+					var sel = d3.select(this);
+					sel.moveToFront();
+					
+					return _d.Layer*groupSteps+getR(_d);
+				})
+				.attr("fill", function(_d){
+					return color(_d.GroupIdx);
+				});
+
+			d3.selectAll(".country")
+				.transition()
+				.duration(500)
+				.attr("fill", function(_d){														
+						var sel = d3.select(this);
+						sel.moveToFront();
+					
+						return "black";
+				});	
+				
+		}
+		
+		function hoverCountry(d){			
+
+			d3.selectAll(".group")
+				.transition()
+				.duration(500)
+				.attr("r", function(_d){											
+					if (sameGroup(d,_d)){
+					
+						var sel = d3.select(this);
+						sel.moveToFront();
+						
+						//console.log("isActive: " + _d.Country)
+						return this.getAttribute("layer")*groupSteps+getR(d);
+					} 
+					else {
+						return 0;
+					}
+				})
+				.attr("fill", function(_d){
+					if (sameGroup(d,_d)){
+						return color(_d.GroupIdx);
+					} else {
+						return "lightgrey";
+					}
+					
+				})
+
+			d3.selectAll(".country")		
+				.attr("fill", function(_d){	
+					if (isActive(d,_d)){
+						var sel = d3.select(this);
+						sel.moveToFront();
+					
+						return "black";
+					} 
+					else {
+						return "lightgrey";
+					}
+				});
+				
+			/*d3.selectAll(".label")
+				.style("opacity", function(_d){
+					tt=this;
+					console.log(this);
+					if (_d.Country == d.Country){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						
+						return 1;
+					} else {
+						return 0
+					}					
+				});*/
+				
+		}
+		
+		
+		function hoverGroup(d){	
+			d3.selectAll(".group")
+				.transition()
+				.duration(1000)
+				.attr("r", function(_d){
+					console.log(d.Group +" "+ _d.Group);
+					if (d.Group == _d.Group){
+						return groupSteps+getR(d);
+					} 
+					else {
+						return 0;
+					}
+				})
+				.attr("fill", function(_d){
+					if (d.Group == _d.Group){
+						return color(d.GroupIdx);
+					} else {
+						return "lightgrey";
+					}
+				})
+
+			d3.selectAll(".country")
+				.attr("fill", "lightgrey");
+
+			//d3.selectAll(".groupbutton")				
+		}
+		function setFilter(d){
+								
+			var minX = 100;
+			var maxX = 0;
+			var maxY = d3.min(data, function(d){return d.GDP_average;});
+			var minY = d3.max(data, function(d){return d.GDP_average;});
+
+			var activeData = data.filter(function(_d){return isActive(_d,d);});
+			var yrange = [d3.min(activeData, function(d){return parseFloat(getY(d));}), 
+						 d3.max(activeData, function(d){return parseFloat(getY(d));})];			
+			var xrange = [d3.min(activeData, function(d){return parseFloat(getX(d));}), 
+						 d3.max(activeData, function(d){return parseFloat(getX(d));})];			
+			
+			xScale.domain([xrange[0],xrange[1]]);
+			yScale.domain([yrange[1],yrange[0]]);
+			
+			updateAll();
+			
+			// POLYS DONT DRAW ACCORDINGLY
+			//drawGroup(function(d){return d.European_Union}, "black");
+			//drawGroup(function(d){return d.African_Union}, "red");
+			//drawGroup(function(d){return d.OSCE}, "green");
+			
+			var f = function(d){return d.European_Union;};
+			
+			var activeData = data.filter(function(d){return f(d) == 1;});
+				poly = "";				
+				activeData.forEach(function(d,i){
+					poly+= xScale(getX(d))+","+yScale(getY(d))+" "			
+				});
+			
+			var eu = svg.selectAll("polygon")
+				.transition()
+				.duration(500)
+				.attr("points", poly);
+
+		}
+	</script>
+    </body>
+</html>
