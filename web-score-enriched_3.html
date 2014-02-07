@@ -65,7 +65,6 @@
 				
 		.groupbutton:hover {
 			fill: orange;
-			opacity: 1;
 		}
 		.groupbutton {
 			stroke-width: 2px,
@@ -95,7 +94,6 @@
 	<p id="acess-electricity">access/electricity</p>
 	<p id="acess-literacy">users vs literacy</p>
 	<p id="score-gdp">score/gdp</p>	
-	<p id="pie-chart">pie-chart</p>
 	
 	<script type = "text/javascript">
 	
@@ -105,21 +103,6 @@
 		* 	BASIC-FUNCTIONS	*
 		*********************/
 		var imgSize = [20,15];
-		var filters = {
-			European_Union:false,
-			African_Union:false,
-			OECD:false,
-			NAFTA:false,
-			MERCOSUR:false,
-			OIC:false,
-			Arab_League:false,
-			ECO:false,
-			gdp:true,
-			pie:true,
-		};
-		
-		var transitionDuration = 200;
-		var delayDuration = 300;
 		
 		var color = d3.scale.category10();
 		var groupSteps = 6;
@@ -129,7 +112,7 @@
 		
 		var getX = function(d){return d.Web_Index_score;};
 		var getY = function(d){return d.GDP_average;};
-		var global_r = d3.max(imgSize)/2;//getX(d)/10};
+		var getR = function(d){return 6;};//getX(d)/10};
 		
 		var countries;
 		var labelfontsize=11
@@ -142,7 +125,6 @@
 		var zooming = false;
 		
 		var data = [];
-		var pie_data=[];
 		var tt;
 		
 		var div = d3.select("body").append("div")   
@@ -193,7 +175,7 @@
 		}
 		
 		var pdist = function(p,_p){
-			return Math.sqrt(Math.pow(p.x-_p.x, 2) + Math.pow(p.y-_p.y, 2));
+			return Math.sqrt(Math.pow(p[0]-_p[0], 2) + Math.pow(p[1]-_p[1], 2));
 		}
 		
 		d3.selection.prototype.moveToFront = function() {
@@ -321,11 +303,13 @@
 			var groupCircleData = [];// the one used for circles
 			var countryGroupLayer = {};
 			var total = 0;			
-						
 			
-			groups.forEach(function(g,j){		
+			drawGroup(function(d){return d.Arab_League;}, 6);
+			
+			groups.forEach(function(g,j){	
 
-				
+				//drawGroup(function(d){return d[g.Group];}, j);
+
 				// get according countries
 				data.forEach(function(c){									
 					if (bl(c[g.Group])){
@@ -368,69 +352,19 @@
 					fill: function(d,i){return color(d.GroupIdx);}
 				})
 				.on("mouseover", function(d){
+					/*div.transition()        
+						.duration(200)      
+						.style("opacity", .9)
+						.style("background", color(d.Group));
+					div .html(groups[d.Group])  
+						.style("left", (d3.event.pageX) + 20 + "px")     
+						.style("top", (d3.event.pageY - 20) + "px");    
+						*/
 					if (!zooming){hoverGroup(d)};
 				})				
 				.on("mouseout", function(d){
-					if (d.Layer > 1) resetHover();
+					//resetHover();
 				})
-				.on("click", function(d){
-					console.log("click");
-					filters[d.Group] = !filters[d.Group];
-				})
-			/*********
-			*	PIES * 
-			**********/
-			data.forEach(function(c){
-				var _data = [];
-				var _attr = {Country: c.Country,
-							Web_Index_score: c.Web_Index_score,
-							GDP_average: c.GDP_average,
-							Users: c.Users,
-							Access_Electricity: c.Access_Electricity};
-							
-				for (var i=0; i<4;i++){
-					var attr = {};
-					for (var attrname in _attr) { attr[attrname] = _attr[attrname]; }
-					
-					if (i==0) attr["pie_data"] = c.Universal_Access;
-					else if (i==1) attr["pie_data"] = c.Relevant_Content;
-					else if (i==2) attr["pie_data"] = c.Freedom_and_Openness;
-					else if (i==3) attr["pie_data"] = c.Impact_and_Empowerment;
-					
-					_data.push(attr);
-				}
-				pie_data.push(_data);
-			});
-			
-			var pie_color = d3.scale.ordinal()
-				.range(["#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
-
-			var arc = d3.svg.arc()
-				.outerRadius(function(d){return (d.value/30.0)*global_r;})
-				.innerRadius(global_r*1.2);
-
-			var pie = d3.layout.pie()
-				.sort(null)
-				.value(function(d) {return d.pie_data;});
-
-			pie_data.forEach(function(d,i){
-				var chunk = pie(d);
-				chunk.forEach(function(_d, j){
-					for (var attrname in pie_data[i][j]) { chunk[j][attrname] = pie_data[i][j][attrname]; }					
-				})
-				
-				var g = svg.selectAll(".arc_"+i)
-					.data(pie(d))
-					.enter().append("g")
-					.attr({
-						"transform": function(){return "translate("+xScale(getX(pie_data[i][0]))+","+yScale(getY(pie_data[i][0]))+")";},
-						class: "pie-arc",
-					});
-					
-				g.append("path")
-					.attr("d", arc)
-					.style("fill", function(d,i) { return pie_color(i); });
-			});
 			
 			/****************
 			*	COUNTRIES 	* 
@@ -444,7 +378,7 @@
 					class: "circlecountry",
 					//cx: function(d){return xScale(getX(d));},
 					//cy: function(d){return yScale(getY(d));},
-					r: global_r+2, //function(d){return r;},
+					r: imgSize[0]/2+2, //function(d){return getR(d);},
 					fill: "white",
 				})
 				.on("mouseover", function(d) {					
@@ -460,7 +394,7 @@
 				})                  
 				.on("mouseout", function(d) {       
 					div.transition()        
-						.duration(transitionDuration)      
+						.duration(500)      
 						.style("opacity", 0);   
 						
 					//resetHover();
@@ -494,7 +428,7 @@
 					})                  
 					.on("mouseout", function(d) {       
 						div.transition()        
-							.duration(transitionDuration)      
+							.duration(500)      
 							.style("opacity", 0);   
 							
 						//resetHover();
@@ -547,13 +481,12 @@
 					height: 20,					
 					class: "groupbutton",
 					fill: function(d,i){return color(i);},
-					opacity: .3,
 				})
 				.on("click", function(d){
-					filters[d.Group]=!filters[d.Group];
 				
 				})
 				.on("mouseover",function(d){
+					console.log("hover " + d.Group);
 					hoverGroup(d);
 				})
 
@@ -600,11 +533,6 @@
 			.on("click", function(){
 				reset();
 			})	
-
-		d3.selectAll("#pie-chart")
-			.on("click", function(){
-				reset();
-			})				
 		
 		/********************
 		*	LITTLE HELPER 	* 
@@ -614,7 +542,7 @@
 
 			svg.selectAll(".incomeline")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({
 					y1: function(d){return yScale(d.y);},
 					y2: function(d){return yScale(d.y);},
@@ -626,7 +554,7 @@
 
 			svg.selectAll(".incomerect")			
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({
 					y: function(d){return yScale(d.y);},
 					height: function(d){return yScale(d.h)-yScale(d.y);},
@@ -638,7 +566,7 @@
 				
 			svg.selectAll(".incometext")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({					
 					y: function(d){return yScale(d.y)+11;},
 					opacity: function(d){
@@ -649,56 +577,77 @@
 			
 			svg.select(".xaxis")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.call(xAxis);
 				
 			svg.select(".yaxis")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.call(yAxis);
 				
-			/*d3.selectAll(".circlecountry")
+			d3.selectAll(".groupline")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
+				.attr("d", function(d){
+
+			var lineFunction = d3.svg.line()
+				.x(function(d){return d.x;})
+				.y(function(d){return d.y;})
+				.interpolate("cardinal-closed");
+					
+			var lineData = [];
+			var preLastP;
+			var lastP;
+			var r = 1;
+					
+			d.forEach(function(_d,i){							
+				var p = {"x":xScale(getX(_d)),
+						 "y":yScale(getY(_d))};
+						 
+				if (preLastP == undefined && lastP != undefined)
+				 	lineData.push(lastP);
+				else if (i == _d.length/2 ||
+					preLastP != undefined && lastP != undefined &&
+					!(r*preLastP.y<r*lastP.y && r*p.y<r*lastP.y))
+					lineData.push(lastP);
+				/*else if (preLastP != undefined && lastP != undefined &&
+					(r*preLastP.y<r*lastP.y && r*p.y<r*lastP.y)){	
+					var tP = {"x":lastP.x, "y":(lastP.y+preLastP.y+p.y)/3};
+					lineData.push(tP);
+				}*/
+						
+						preLastP = lastP;
+						lastP = p;
+							if (i == d.length/2-1){r=-r;}
+					});						
+					return lineFunction(lineData);
+			})
+
+			d3.selectAll(".ccirclecountry")
+				.transition()
+				.duration(500)
 				.attr({
 					cx: function(d){return xScale(getX(d));},
 					cy: function(d){return yScale(getY(d));},
-					r: global_r+2,
+					r: imgSize[0]/2+2,
 				});
-				*/
-			
-			d3.selectAll(".pie-arc")				
-				.transition()
-				.duration(transitionDuration)	
-				.attr({"transform": function(_d,i){
-										return 	"translate("
-												+xScale(getX(_d.data))
-												+","
-												+yScale(getY(_d.data))
-												+")";},
-				})
+				
 				
 			d3.selectAll(".imgcountry")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({
 					x: function(d){return xScale(getX(d))-imgSize[0]/2;},
 					y: function(d){return yScale(getY(d))-imgSize[1]/2;},					
-					opacity: 1,
 				});
 				
 			d3.selectAll(".group")
 				.transition()
-				.duration(transitionDuration)				
+				.duration(500)				
 				.attr({
 					cx: function(d){return xScale(getX(d));},
 					cy: function(d){return yScale(getY(d));},
-					r: function(d){
-						if (filters[d.Group])
-							return global_r+groupSteps*d.Layer;
-						else 
-							return 0;
-					}
+					r: function(d){return getR(d)+groupSteps*d.Layer;},	
 				})
 				.each("end", function(){zooming = false});				
 
@@ -708,10 +657,6 @@
 						var sel = d3.select(this);
 						sel.moveToFront();
 						return color(i);},
-					opacity: function(d){
-						if (filters[d.Group]) return 1;
-						else return .2;
-					}
 				})
 
 			d3.selectAll(".grouptext")
@@ -721,8 +666,47 @@
 						sel.moveToFront();
 						return "black";},
 				})				
-		}
 				
+			/*d3.selectAll("text.label")
+				.transition()
+				.duration(500)
+				.attr({
+					x: function(d){return xScale(getX(d))+4*groupSteps;},
+					y: function(d){return yScale(getY(d));},
+				});							
+
+			d3.selectAll("rect")
+				.transition()
+				.duration(500)
+				.attr({
+					x: function(d){return xScale(getX(d))+4*groupSteps-labelboxpadding/2;},
+					y: function(d){return yScale(getY(d))-labelfontsize-labelboxpadding/2;},
+				});						
+*/
+			
+		}
+		
+		function drawGroup(f, cIdx){
+			
+			var a = data.filter(function(d){return bl(f(d));});		
+			a.sort(function(d,_d){return d3.ascending(getX(d), getX(_d));});;
+			var b = data.filter(function(d){return bl(f(d));});		
+			b.sort(function(d,_d){return d3.descending(getX(d), getX(_d));});
+			var activeData=a.concat(b);
+									
+			svg.selectAll(".groupline")
+				.data([activeData])
+				.enter()
+				.append("path")
+	
+				.attr({
+					stroke: color(cIdx),
+					fill: color(cIdx),
+					"stroke-width": imgSize[0],
+					class: "groupline",	
+				});
+		}
+		
 		function reset(){
 			xScale.domain([0,100]);
 			yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);
@@ -742,13 +726,12 @@
 			
 			d3.selectAll(".group")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr("r", function(_d){						
 					var sel = d3.select(this);
 					sel.moveToFront();
 					
-					if (filters[_d.Group]) return _d.Layer*groupSteps+global_r;
-					else return 0;
+					return _d.Layer*groupSteps+getR(_d);
 				})
 				.attr("fill", function(_d){
 					return color(_d.GroupIdx);
@@ -756,7 +739,7 @@
 
 			d3.selectAll(".country")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr("fill", function(_d){														
 						var sel = d3.select(this);
 						sel.moveToFront();
@@ -766,7 +749,7 @@
 
 			d3.selectAll(".imgcountry")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({
 					opacity: function(){
 						var sel = d3.select(this);
@@ -780,14 +763,14 @@
 
 			d3.selectAll(".group")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr("r", function(_d){											
 					if (sameGroup(d,_d)){
 					
 						var sel = d3.select(this);
 						sel.moveToFront();
 						
-						return this.getAttribute("layer")*groupSteps+global_r;
+						return this.getAttribute("layer")*groupSteps+getR(d);
 					} 
 					else {
 						return 0;
@@ -817,7 +800,7 @@
 				
 			d3.selectAll(".imgcountry")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({
 					opacity: function(_d){
 						if (isActive(d,_d)){
@@ -836,21 +819,18 @@
 		function hoverGroup(d){	
 			d3.selectAll(".group")
 				.transition()
-				.delay(delayDuration)
-				.duration(transitionDuration)
+				.duration(1000)
 				.attr("r", function(_d){
-					if (d.Group == _d.Group ||
-						filters[_d.Group]){
-						return groupSteps+global_r*1.5;
+					if (d.Group == _d.Group){
+						return groupSteps+getR(d);
 					} 
 					else {
 						return 0;
 					}
 				})
 				.attr("fill", function(_d){
-					if (d.Group == _d.Group ||
-						filters[_d.Group]){
-						return color(_d.GroupIdx);
+					if (d.Group == _d.Group){
+						return color(d.GroupIdx);
 					} else {
 						return "lightgrey";
 					}
@@ -861,7 +841,7 @@
 
 			d3.selectAll(".imgcountry")
 				.transition()
-				.duration(transitionDuration)
+				.duration(500)
 				.attr({
 					opacity: function(_d){
 						if (_d[d.Group]){
