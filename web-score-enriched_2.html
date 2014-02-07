@@ -102,13 +102,11 @@
 		* 		&		   	*
 		* 	BASIC-FUNCTIONS	*
 		*********************/
-		var imgSize = [20,15];
 		
 		var color = d3.scale.category10();
 		var groupSteps = 6;
 		
 		var gdp = true;
-		var avgDistSteps = 10;
 		
 		var getX = function(d){return d.Web_Index_score;};
 		var getY = function(d){return d.GDP_average;};
@@ -241,7 +239,11 @@
 			data=_data;
 
 			yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);			
-							  			
+							  
+			//drawGroup(function(d){return d.MERCOSUR;}, "blue");
+			//drawGroup(function(d){return d.European_Union;}, "black");
+			//drawGroup(function(d){return d.African_Union;}, "red");
+			
 			/********************
 			*	INCOME GROUPS 	* 
 			*********************/
@@ -299,18 +301,14 @@
 							{GroupIdx: 6, Group: 'Arab_League'},
 							{GroupIdx: 7, Group: 'ECO'}
 						];
-						
-			var groupCircleData = [];// the one used for circles
+			
+			var groupData = [];
 			var countryGroupLayer = {};
-			var total = 0;			
+			var total = 0;
+			countryGroupLayer['peter']=1;
+			tt = countryGroupLayer;
 			
-			drawGroup(function(d){return d.Arab_League;}, 6);
-			
-			groups.forEach(function(g,j){	
-
-				//drawGroup(function(d){return d[g.Group];}, j);
-
-				// get according countries
+			groups.forEach(function(g,j){							
 				data.forEach(function(c){									
 					if (bl(c[g.Group])){
 						
@@ -336,13 +334,13 @@
 							GroupIdx: j,
 							};
 						newData[g.Group] = "true";
-						groupCircleData.push(newData);
+						groupData.push(newData);
 					}
 				})
 			});
-									
+						
 			bk=svg.selectAll("circle.group")
-				.data(groupCircleData)
+				.data(groupData)
 				.enter()
 				.append("circle")
 				.attr({
@@ -369,17 +367,34 @@
 			/****************
 			*	COUNTRIES 	* 
 			*****************/
-			
+			countries = svg.selectAll("img.country")
+				.data(data)
+				.enter()
+				.append("svg:image")
+				.attr({
+					"xlink:href": function(d){
+						var img = "img-flags/"+d.A2+".png";
+						console.log("load" + img);
+						return img;
+						},
+					x: function(d){return xScale(getX(d));},					
+					y: function(d){return yScale(getY(d));},
+					width: 20,
+					height: 15,					
+				})
+				
 			countries = svg.selectAll("circle.country")
 				.data(data)
 				.enter()
 				.append("circle")
 				.attr({					
-					class: "circlecountry",
+					class: "country",
 					//cx: function(d){return xScale(getX(d));},
 					//cy: function(d){return yScale(getY(d));},
-					r: imgSize[0]/2+2, //function(d){return getR(d);},
-					fill: "white",
+					r: 0, //function(d){return getR(d);},
+					fill: "black",
+					stroke: "white",
+					"stroke-width": 1,
 				})
 				.on("mouseover", function(d) {					
 				
@@ -403,40 +418,6 @@
 					setFilter(d);					
 				});
 
-				countries = svg.selectAll("img.country")
-					.data(data)
-					.enter()
-					.append("svg:image")
-					.attr({
-						"xlink:href": function(d){ return "img-flags/"+d.A2+".png";},
-						//x: function(d){return xScale(getX(d))-imgSize[0]/2;},					
-						//y: function(d){return yScale(getY(d))-imgSize[1]/2;},
-						width: imgSize[0],
-						height: imgSize[1],		
-						class: "imgcountry",
-					})
-					.on("mouseover", function(d) {					
-					
-						div.transition()        
-							.duration(200)      
-							.style("opacity", .9);      
-						div .html(d.Country)  
-							.style("left", (d3.event.pageX) + 20 + "px")     
-							.style("top", (d3.event.pageY - 20) + "px");    
-							
-						if (!zooming){hoverCountry(d)};
-					})                  
-					.on("mouseout", function(d) {       
-						div.transition()        
-							.duration(500)      
-							.style("opacity", 0);   
-							
-						//resetHover();
-					})
-					.on("click", function(d){
-						setFilter(d);					
-					});
-					
 			/************
 			*	TEXT 	* 
 			*************/
@@ -468,8 +449,27 @@
 						class: "label",
 					});
 			
+			/*labels[0].forEach(function(d){
+				var text = d;
+
+				var bbox = text.getBBox();
+				var rect = svg.append("rect")
+					.attr({
+						x: bbox.x-labelboxpadding/2,
+						y: bbox.y-labelboxpadding/2,
+						width: bbox.width+labelboxpadding,
+						height: bbox.height,
+						class: "labelbox"
+					});			
+
+				var sel = d3.select(d);
+				sel.moveToFront();					
+			})*/
+			
 			updateAll();
-						
+			
+			//groups.push(["[]"])
+			
 			svg.selectAll(".groupbutton")
 				.data(groups)
 				.enter()
@@ -584,69 +584,22 @@
 				.transition()
 				.duration(500)
 				.call(yAxis);
-				
-			d3.selectAll(".groupline")
-				.transition()
-				.duration(500)
-				.attr("d", function(d){
 
-			var lineFunction = d3.svg.line()
-				.x(function(d){return d.x;})
-				.y(function(d){return d.y;})
-				.interpolate("cardinal-closed");
-					
-			var lineData = [];
-			var preLastP;
-			var lastP;
-			var r = 1;
-					
-			d.forEach(function(_d,i){							
-				var p = {"x":xScale(getX(_d)),
-						 "y":yScale(getY(_d))};
-						 
-				if (preLastP == undefined && lastP != undefined)
-				 	lineData.push(lastP);
-				else if (i == _d.length/2 ||
-					preLastP != undefined && lastP != undefined &&
-					!(r*preLastP.y<r*lastP.y && r*p.y<r*lastP.y))
-					lineData.push(lastP);
-				/*else if (preLastP != undefined && lastP != undefined &&
-					(r*preLastP.y<r*lastP.y && r*p.y<r*lastP.y)){	
-					var tP = {"x":lastP.x, "y":(lastP.y+preLastP.y+p.y)/3};
-					lineData.push(tP);
-				}*/
-						
-						preLastP = lastP;
-						lastP = p;
-							if (i == d.length/2-1){r=-r;}
-					});						
-					return lineFunction(lineData);
-			})
-
-			d3.selectAll(".ccirclecountry")
+			d3.selectAll(".country")
 				.transition()
 				.duration(500)
 				.attr({
 					cx: function(d){return xScale(getX(d));},
 					cy: function(d){return yScale(getY(d));},
-					r: imgSize[0]/2+2,
-				});
-				
-				
-			d3.selectAll(".imgcountry")
-				.transition()
-				.duration(500)
-				.attr({
-					x: function(d){return xScale(getX(d))-imgSize[0]/2;},
-					y: function(d){return yScale(getY(d))-imgSize[1]/2;},					
+					r: function(d){return getR(d);},
 				});
 				
 			d3.selectAll(".group")
 				.transition()
 				.duration(500)				
 				.attr({
-					cx: function(d){return xScale(getX(d));},
-					cy: function(d){return yScale(getY(d));},
+					cx: function(d){return xScale(getX(d))+d.Layer*2;},
+					cy: function(d){return yScale(getY(d))+d.Layer*2;},
 					r: function(d){return getR(d)+groupSteps*d.Layer;},	
 				})
 				.each("end", function(){zooming = false});				
@@ -686,25 +639,44 @@
 			
 		}
 		
-		function drawGroup(f, cIdx){
+		function drawGroup(f){
+			var activeData = data.filter(function(d){return f(d) == 1;});
+			var minX = d3.min(activeData, function(d){return getX(d);});
+			var maxX = d3.max(activeData, function(d){return getX(d);});
 			
-			var a = data.filter(function(d){return bl(f(d));});		
-			a.sort(function(d,_d){return d3.ascending(getX(d), getX(_d));});;
-			var b = data.filter(function(d){return bl(f(d));});		
-			b.sort(function(d,_d){return d3.descending(getX(d), getX(_d));});
-			var activeData=a.concat(b);
-									
-			svg.selectAll(".groupline")
-				.data([activeData])
+			activeData.sort(function(d,_d){return d3.ascending(getX(d), getX(_d));});
+			
+			poly = [];			
+			activeData.forEach(function(d,i){
+				poly.push([xScale(getX(d))-getR(d)*1.5,
+							yScale(getY(d))-getR(d)*1.5]);
+				poly.push([xScale(getX(d))+getR(d)*1.5,
+							yScale(getY(d))-getR(d)*1.5]);
+			});
+			
+			activeData.sort(function(d,_d){return d3.descending(getX(d), getX(_d));});
+			activeData.forEach(function(d,i){
+				poly.push([xScale(getX(d))+getR(d)*1.5,
+							yScale(getY(d))+getR(d)*1.5]);
+				poly.push([xScale(getX(d))-getR(d)*1.5,
+							yScale(getY(d))+getR(d)*1.5]);
+			});
+
+			tt=poly;
+			var s = "";
+			poly.forEach(function(d){s+=d.join(",")+" ";});
+
+			poly=s;			
+			
+			
+			var eu = svg.selectAll("polygon")
+				.data(activeData)
 				.enter()
-				.append("path")
-	
-				.attr({
-					stroke: color(cIdx),
-					fill: color(cIdx),
-					"stroke-width": imgSize[0],
-					class: "groupline",	
-				});
+				.append("polygon")
+				.attr("points", poly)
+				//.attr("stroke", color)
+				//.attr("stroke-width", 2)
+				.attr("fill");
 		}
 		
 		function reset(){
@@ -746,17 +718,7 @@
 					
 						return "black";
 				});	
-
-			d3.selectAll(".imgcountry")
-				.transition()
-				.duration(500)
-				.attr({
-					opacity: function(){
-						var sel = d3.select(this);
-						sel.moveToFront();
-						
-						return 1;},
-				});				
+				
 		}
 		
 		function hoverCountry(d){			
@@ -770,6 +732,7 @@
 						var sel = d3.select(this);
 						sel.moveToFront();
 						
+						//console.log("isActive: " + _d.Country)
 						return this.getAttribute("layer")*groupSteps+getR(d);
 					} 
 					else {
@@ -798,21 +761,20 @@
 					}
 				});
 				
-			d3.selectAll(".imgcountry")
-				.transition()
-				.duration(500)
-				.attr({
-					opacity: function(_d){
-						if (isActive(d,_d)){
-							var sel = d3.select(this);
-							sel.moveToFront();
+			/*d3.selectAll(".label")
+				.style("opacity", function(_d){
+					tt=this;
+					console.log(this);
+					if (_d.Country == d.Country){
+						var sel = d3.select(this);
+						sel.moveToFront();
 						
-							return 1;
-						} else {
-							return 0.3;
-						}
-					}
-				});
+						return 1;
+					} else {
+						return 0
+					}					
+				});*/
+				
 		}
 		
 		
@@ -821,6 +783,7 @@
 				.transition()
 				.duration(1000)
 				.attr("r", function(_d){
+					console.log(d.Group +" "+ _d.Group);
 					if (d.Group == _d.Group){
 						return groupSteps+getR(d);
 					} 
@@ -835,25 +798,9 @@
 						return "lightgrey";
 					}
 				})
-				
+
 			d3.selectAll(".country")
 				.attr("fill", "lightgrey");
-
-			d3.selectAll(".imgcountry")
-				.transition()
-				.duration(500)
-				.attr({
-					opacity: function(_d){
-						if (_d[d.Group]){
-							var sel = d3.select(this);
-							sel.moveToFront();
-						
-							return 1;
-						} else {
-							return 0.3;
-						}
-					}
-				});				
 
 			//d3.selectAll(".groupbutton")				
 		}
@@ -874,6 +821,25 @@
 			yScale.domain([yrange[1],yrange[0]]);
 			
 			updateAll();
+			
+			// POLYS DONT DRAW ACCORDINGLY
+			//drawGroup(function(d){return d.European_Union}, "black");
+			//drawGroup(function(d){return d.African_Union}, "red");
+			//drawGroup(function(d){return d.OSCE}, "green");
+			
+			var f = function(d){return d.European_Union;};
+			
+			var activeData = data.filter(function(d){return f(d) == 1;});
+				poly = "";				
+				activeData.forEach(function(d,i){
+					poly+= xScale(getX(d))+","+yScale(getY(d))+" "			
+				});
+			
+			var eu = svg.selectAll("polygon")
+				.transition()
+				.duration(500)
+				.attr("points", poly);
+
 		}
 	</script>
     </body>
