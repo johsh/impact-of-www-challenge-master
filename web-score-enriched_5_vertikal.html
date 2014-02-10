@@ -127,8 +127,8 @@
 		var gdp = true;
 		var avgDistSteps = 10;
 		
-		var getY = function(d){return d.Web_Index_score;};
-		var getX = function(d){return d.GDP_average;};
+		var getX = function(d){return d.Web_Index_score;};
+		var getY = function(d){return d.GDP_average;};
 		var global_r = d3.max(imgSize)/2;//getX(d)/10};
 		
 		var countries;
@@ -209,16 +209,15 @@
 		*************/
 
 		/* SCALES ARE ALWAYS 0-100 */
-		var xScaleTop = d3.scale.linear()
+		var xScale = d3.scale.linear()
 						.nice() 
 						.domain([0,100])
 						.range([padding,width-3.5*padding]);
 		
-		var xScale = d3.scale.log()
-						.nice() 
-						.domain([0,100])
-						.range([padding,width-3.5*padding]);
-						
+						/*ordinal()
+						.domain(d3.range(82))
+						.rangeBands([padding,width-padding],0.2);						
+						*/
 		var yScale = d3.scale.linear()
 						.nice()
 						.domain([100,0])
@@ -251,12 +250,7 @@
 			.attr("class", "yaxis")
 			.attr("transform", "translate("+(width-40)+",0)")
 			.call(yAxis);			
-
-		var xF = function(d){
-			var _p = (yScale(getY(d))-yScale.domain[0])/(yScale.domain[1]-yScale.domain[0]);
-			return (xScaleTop(getX(d))*(1-_p)+xScale(getX(d))*_p);
-		}
-			
+		
 		/****************
 		*	LOAD CSV 	* 
 		*****************/
@@ -264,34 +258,26 @@
 		d3.csv("web-score-enriched.csv", function(_data) {			
 			data=_data;
 
-			xScale.domain([d3.min(data, function(d){return getX(d);}),d3.max(data, function(d){return getX(d);})]);			
-			xScaleTop.domain([d3.min(data, function(d){return getX(d);}),d3.max(data, function(d){return getX(d);})]);			
 			yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);			
-			//xScale.domain([1,d3.max(data, function(d){return getX(d);})]);			
-			//yScale.domain([d3.max(data, function(d){return getY(d);}),1]);			
-
 							  			
 			/********************
 			*	INCOME GROUPS 	* 
 			*********************/
-			console.log(d3.max(data, function(d){return getX(d);}));
-			var incomeGroups = [{group: "HIGH INCOME", x: 12476, w: d3.max(data, function(d){return getX(d);})},
-								{group: "UPPER MIDDLE INCOME", x:  4036, w: 12476}, 
-								{group: "LOWER MIDDLE INCOME", x: 1026, w: 4036}, 
-								{group: "LOW INCOME", x: 1, w: 1026}];
-			tt=incomeGroups;
+			var incomeGroups = [{group: "HIGH INCOME", y: d3.max(data, function(d){return getY(d);}), h: 12476},
+								{group: "UPPER MIDDLE INCOME", y:  12476, h: 4036}, 
+								{group: "LOWER MIDDLE INCOME", y: 4036, h: 1026}, 
+								{group: "LOW INCOME", y: 1026, h: 0}];
 
 			svg.selectAll("rect.income")
 				.data(incomeGroups)
 				.enter()
 				.append("rect")
 				.attr({
-					x: function(d){return xScale(d.x);},
-					y: yScale(yScale.domain()[0]),
-					width: function(d){return xScale(d.w)-xScale(d.x);},
-					height: yScale(yScale.domain()[1]),
+					x: xScale(0),
+					y: function(d){return yScale(d.y);},
+					width: xScale(100),
+					height: function(d){return yScale(d.h)-yScale(d.y);},
 					class: "incomerect",
-					fill: "red",
 				})
 
 			svg.selectAll("line.income")
@@ -299,10 +285,10 @@
 				.enter()
 				.append("line")
 				.attr({
-					x1: 0,//function(d){return xScale(d.w);},
-					y1: yScale(yScale.domain()[1]),
-					x2: 0,//function(d){return xScale(d.w);},
-					y2: yScale(yScale.domain()[0]),
+					x1: xScale(0),
+					y1: function(d){return yScale(d.y);},
+					x2: xScale(100),
+					y2: function(d){return yScale(d.y);},
 					class: "incomeline",
 				});		
 				
@@ -312,8 +298,8 @@
 				.append("text")
 				.text(function(d){return d.group;})
 				.attr({
-					x: function(d){return xScale(d.x)+10;},					
-					y: yScale(yScale.domain()[0])-padding+2,
+					x: padding+2,
+					y: function(d){return yScale(d.y)+10;},					
 					class: "incometext"
 				})
 				
@@ -555,8 +541,8 @@
 				.enter()
 				.append("rect")
 				.attr({
-					x: width-150,
-					y: function(d,i){return height-250+i*20+padding*2;},
+					x: padding*2,
+					y: function(d,i){return i*20+padding*2;},
 					width: 90,
 					height: 20,					
 					class: "groupbutton",
@@ -577,8 +563,8 @@
 				.append("text")
 				.text(function(d){return d.Group.replace("_", " ");})
 				.attr({
-					x: width-150,
-					y: function(d,i){return height-250+i*20+padding*2+13;},
+					x: padding*2+5,
+					y: function(d,i){return i*20+padding*2+13;},
 					class: "grouptext",
 				})				
 		});
@@ -589,8 +575,8 @@
 
 		d3.selectAll("#acess-electricity")
 			.on("click", function(){
-				getY = function(d){return d.Universal_Access};
-				getX = function(d){return d.Access_Electricity};
+				getX = function(d){return d.Universal_Access};
+				getY = function(d){return d.Access_Electricity};
 				
 				svg.selectAll("circle")
 					.attr("opacity", function(d){if (d.Access_Electricity == "") return 0});
@@ -601,8 +587,8 @@
 
 		d3.selectAll("#score-gdp")
 			.on("click", function(){
-				getY = function(d){return d.Web_Index_score};
-				getX = function(d){return d.GDP_average};
+				getX = function(d){return d.Web_Index_score};
+				getY = function(d){return d.GDP_average};
 				
 				svg.selectAll("circle")
 					.attr("opacity", 1);
@@ -623,25 +609,17 @@
 		/********************
 		*	LITTLE HELPER 	* 
 		*********************/
-		var xF = function(d){
-			var _p = (getY(d)-yScale.domain[0])/(yScale.domain[1]-yScale.domain[0]);
-			console.log(_p+" "+getY(d)+" "+yScale.domain[0]+" "+yScale.domain[1]+" "+yScale.domain[0]);
-			
-			return (xScaleTop(getX(d))*(1-_p)+xScale(getX(d))*_p);
-		}
-
 		function updateAll(){	
-			console.log("update all");
 			zooming = true;
-			
+
 			svg.selectAll(".incomeline")
 				.transition()
 				.duration(transitionDuration)
 				.attr({
-					x1: function(d){return xF(d);},//xScale(d.x);},
-					x2: function(d){return xF(d);},//xScaleTop(d.x);},
+					y1: function(d){return yScale(d.y);},
+					y2: function(d){return yScale(d.y);},
 					opacity: function(d){
-						if (!gdp || xScale(d.x) > width-2.5*padding){return 0;}
+						if (!gdp || yScale(d.y) > height-2.5*padding){return 0;}
 						else {return 1;}
 					}
 				})
@@ -650,10 +628,10 @@
 				.transition()
 				.duration(transitionDuration)
 				.attr({
-					x: function(d){return xScale(d.x);},
-					width: function(d){return xScale(d.w)-xScale(d.x);},
+					y: function(d){return yScale(d.y);},
+					height: function(d){return yScale(d.h)-yScale(d.y);},
 					opacity: function(d){
-						if (!gdp || xScale(d.x) > width-2.5*padding){return 0;}
+						if (!gdp || yScale(d.y) > height-2.5*padding){return 0;}
 						else {return 1;}
 					}
 				})				
@@ -746,12 +724,8 @@
 		}
 				
 		function reset(){
-			//xScale.domain([d3.min(data, function(d){return getX(d);}),d3.max(data, function(d){return getX(d);})]);			
-			//yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);			
-			xScale.domain([1,d3.max(data, function(d){return getX(d);})]);			
-			xScaleTop.domain([1,d3.max(data, function(d){return getX(d);})]);			
-			yScale.domain([d3.max(data, function(d){return getY(d);}),1]);			
-
+			xScale.domain([0,100]);
+			yScale.domain([d3.max(data, function(d){return getY(d);}),d3.min(data, function(d){return getY(d);})]);
 			
 			resetHover();			
 			updateAll();
@@ -903,16 +877,20 @@
 
 			//d3.selectAll(".groupbutton")				
 		}
-		
 		function setFilter(d){
+								
+			var minX = 100;
+			var maxX = 0;
+			var maxY = d3.min(data, function(d){return d.GDP_average;});
+			var minY = d3.max(data, function(d){return d.GDP_average;});
+
 			var activeData = data.filter(function(_d){return isActive(_d,d);});
 			var yrange = [d3.min(activeData, function(d){return parseFloat(getY(d));}), 
 						 d3.max(activeData, function(d){return parseFloat(getY(d));})];			
 			var xrange = [d3.min(activeData, function(d){return parseFloat(getX(d));}), 
 						 d3.max(activeData, function(d){return parseFloat(getX(d));})];			
-						
+			
 			xScale.domain([xrange[0],xrange[1]]);
-			xScaleTop.domain([xrange[0],xrange[1]]);
 			yScale.domain([yrange[1],yrange[0]]);
 			
 			updateAll();
