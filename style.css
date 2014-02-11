@@ -1,0 +1,174 @@
+body{
+	background-color: #3398cc;
+	//width: 1100px;
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 0px;
+	font-size: 11pt;
+    font-family: "Minion Pro", "Minion Web", "Hoefler Text",  Georgia, Times, serif;
+    font-family: "Myriad Pro", "Myriad Web", "Myriad", Calibri, "Trebuchet MS", "Gill Sans", "Lucida Grande", sans-serif; 
+}
+
+div{
+	border-radius: 1px;
+	margin-left: 5px;
+	background: #ffffff;
+}
+
+#title {
+	text-align: left;
+	font-size: 10pt;
+	display: inline;
+	background: #ffffff;
+	float: left;
+	margin-top: 5px;
+	padding: 20px;
+}
+
+#wrapper {
+	float: center;	
+	margin-left: auto;
+	margin-right: auto;
+	margin: 10px;
+	background: #3398cc;
+}
+
+#nav-tools {
+	float: left;
+	width: 50px;
+	background: #ffffff;
+}
+
+#content {
+	float: left;
+	background: #3398cc;
+	padding: 0px;	
+}
+
+#svg,
+{
+	padding: 10px;
+	float: left;
+	background: #ffffff;
+}
+
+#sources,
+#text{
+	font-size: 9pt;
+    font-family: "Minion Pro", "Minion Web", "Hoefler Text",  Georgia, Times, serif;
+    font-family: "Myriad Pro", "Myriad Web", "Myriad", Calibri, "Trebuchet MS", "Gill Sans", "Lucida Grande", sans-serif; 	
+	float: left;
+	padding: 10px;
+	width: 380px;
+	margin-top: 5px;
+}
+
+h1 {
+	font-size: 30pt;
+	line-height: 100%;
+	padding: 0px 0px 10px 0px;
+	margin: 0px 0px 20px 0px;
+}
+
+a {
+color: black;
+//background: #3398cc;
+padding: 2px;
+font-style: italic;
+
+-webkit-transition: all 0.1s ease-in;
+   -moz-transition: all 0.1s ease-in;
+     -o-transition: all 0.1s ease-in;
+	-ms-transition: all 0.1s ease-in;
+        transition: all 0.1s ease-in;
+}
+
+a:hover { 
+	color:white;
+	background:black;
+}
+
+circle {
+	-moz-transition: all 0.5s;
+	-o-transition: all 0.5s;
+	-webkit-transition: all 0.5s;
+	transition: all 0.5s;
+}
+circle:hover{
+	fill: orange;
+}
+
+div.tooltip {
+  position: absolute;           
+  text-align: left;           
+  width: 30px;                  
+  height: 15px;                 
+  padding: 2px;             
+  font: 12px sans-serif;        
+  background: lightsteelblue;   
+  border: 0px;      
+  //border-radius: 8px;           
+  pointer-events: none;         
+}
+
+.xaxis path,
+.yaxis path,
+.xaxis line,
+.yaxis line{
+	fill: none;
+	stroke: black;
+	//shape-rendering: crispEdges;
+}
+.xaxis text,
+.yaxis text,
+.incometext,
+.similartext,
+.pie-text,
+.grouptext {
+	font-family: "Minion Pro", "Minion Web", "Hoefler Text",  Georgia, Times, serif;
+    font-family: "Myriad Pro", "Myriad Web", "Myriad", Calibri, "Trebuchet MS", "Gill Sans", "Lucida Grande", sans-serif; 
+	font-size: 12px;
+	font-weight: 500;
+	pointer-events: none;
+}
+
+.incometext {	
+	text-anchor: start;
+	font-size: 30px;
+	fill: black;
+	opacity: .3;
+}
+		
+.groupbutton:hover {
+	opacity: 1;
+}
+.groupbutton {
+	stroke-width: 2px,
+	stroke: "white",
+}
+
+.incomeline {			
+	stroke: grey;
+	stroke-width: 1;
+	stroke-dasharray: 5,5;
+	shape-rendering: crispEdges;
+}
+.incomerect {
+	fill: white;
+	
+}
+.incomerect:hover{		
+	fill: LightSalmon;
+	opacity: .5;
+}
+
+.similar {
+	stroke-dasharray: 10,10;
+	stroke-width: 10px;
+	stroke-width: 3px;
+	pointer-events: none;
+	fill:none;
+	shape-rendering: crispEdges;
+}
+.pie-arc{
+}

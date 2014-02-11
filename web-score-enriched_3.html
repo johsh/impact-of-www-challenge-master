@@ -304,11 +304,11 @@
 			var countryGroupLayer = {};
 			var total = 0;			
 			
-			drawGroup(function(d){return d.Arab_League;}, 6);
+			//drawGroup(function(d){return d.Arab_League;}, 6);
 			
 			groups.forEach(function(g,j){	
 
-				//drawGroup(function(d){return d[g.Group];}, j);
+				drawGroup(function(d){return d[g.Group];}, j);
 
 				// get according countries
 				data.forEach(function(c){									
@@ -593,7 +593,8 @@
 			var lineFunction = d3.svg.line()
 				.x(function(d){return d.x;})
 				.y(function(d){return d.y;})
-				.interpolate("cardinal-closed");
+				.interpolate("cardinal-closed")
+				.tension(.1);
 					
 			var lineData = [];
 			var preLastP;
@@ -603,13 +604,15 @@
 			d.forEach(function(_d,i){							
 				var p = {"x":xScale(getX(_d)),
 						 "y":yScale(getY(_d))};
-						 
+				
+				lineData.push(p);		 						 
+				
 				if (preLastP == undefined && lastP != undefined)
-				 	lineData.push(lastP);
+				 	;//lineData.push(lastP);
 				else if (i == _d.length/2 ||
 					preLastP != undefined && lastP != undefined &&
 					!(r*preLastP.y<r*lastP.y && r*p.y<r*lastP.y))
-					lineData.push(lastP);
+					;//lineData.push(lastP);
 				/*else if (preLastP != undefined && lastP != undefined &&
 					(r*preLastP.y<r*lastP.y && r*p.y<r*lastP.y)){	
 					var tP = {"x":lastP.x, "y":(lastP.y+preLastP.y+p.y)/3};
@@ -694,7 +697,7 @@
 			b.sort(function(d,_d){return d3.descending(getX(d), getX(_d));});
 			var activeData=a.concat(b);
 									
-			svg.selectAll(".groupline")
+			svg.selectAll(".groupline"+cIdx)
 				.data([activeData])
 				.enter()
 				.append("path")

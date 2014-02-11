@@ -1,0 +1,1323 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+		<meta charset="utf-8" name="author" content="joh schleith">
+        <title>Scores in Squares</title>
+        <script type="text/javascript" src="d3.v3.js"></script>
+		<link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+	
+	<div id="wrapper">
+		<div id="nav-tools">
+			<div id="reset"><img src="img/iconmonstr-magnifier-7-icon.svg" height="40px" alt="reset" title="Zoom out, reset view."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div><div id="log"><img src="img/iconmonstr-cursor-horizontal-2-icon.svg" height="40px" alt="linear scale" title="Switch from distorted view to a view which is true to scale."/></div>
+			<p id="acess-electricity"></p>
+			<p id="score-gdp"></p>	
+		</div>
+		
+		<div id="content">
+			<div id="svg"></div>			
+			<div id="title"><h2>Scores in Squares</h2></div>
+			<div id="text">
+			<h4>About</h4>
+			<p>How well did a nation score due to the web index score <a href="#sources">[1]</a>? Explore the visualization above and see scores in relation to nations from the same region in the world, within the same level of income <a href="#sources">[2]</a>,<a href="#sources">[3]</a> and economic alliances <a href="#sources">[4]</a>, like Mercosur or the NAFTA. This little piece is my contribution to the contest <a href="http://www.visualizing.org/contests/visualizing-impact-world-wide-web">Visualizing the Impact of the World Wide Web</a>.</p>
+			<h4>Sources</h4>
+			<ol>
+			<li>Web Index Score, 2013 <a href="http://thewebindex.org/data/index/">thewebindex.org</a></li>
+			<li><a href="http://www.gfmag.com/tools/global-database/economic-data/12066-co">classification of countries</a> (World Bank, 2012)</li>
+			<li><a href="http://data.worldbank.org/indicator/NY.GDP.PCAP.CD">GDP-average</a> (World Bank, 2012) </li>
+			<li><a href="http://en.wikipedia.org/wiki/Category:Trade_blocs">International Trade Blocs</a> (Wikipedia, 10-02-2014)</li>
+			<li>The beautiful flags were found <a href="https://github.com/koppi/iso-country-flags-svg-collection">here</a></li>
+			</ol>
+			<div align="right"><a href="http://www.schleith.org">Joh Schleith</a>, 2014</div>
+			</div>
+		
+			<div id="sources">
+			<h4>Instructions</h4>
+			<ul>
+			<li>x-axis: Average Per Capita Income, $0-99,000 (log/linear scale)</li>
+			<li>y-axis: Web Index Score, 0-100pt</li>
+			<li>Hover over elements to reveal relating groups</li>
+			<li>Click to zoom</li>
+			</ul>
+			</div>
+			
+						
+		</div>	
+	</div>		
+	
+	<script type = "text/javascript">
+	
+		/********************
+		*	GLOBAL VARs		* 
+		* 		&		   	*
+		* 	BASIC-FUNCTIONS	*
+		*********************/
+		var imgSize = [20,15];
+		var filters = {
+			European_Union:false,
+			African_Union:false,
+			OECD:false,
+			NAFTA:false,
+			MERCOSUR:false,
+			OIC:false,
+			Arab_League:false,
+			ECO:false,
+			gdp:true,
+			log:true,
+			pie:false,
+		};
+		
+		var transitionDuration = 500;
+		var delayDuration = 300;
+		
+		var color = function(d){
+			var _color = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666'];
+			return _color[d];
+		}
+		
+		var groupSteps = 6;
+		
+		var gdp = true;
+		var avgDistSteps = 10;
+		
+		var getY = function(d){return d.Web_Index_score;};
+		var getX = function(d){return d.GDP_average;};
+		var global_r = d3.max(imgSize)/2;//getX(d)/10};
+		
+		var countries;		
+		
+		var width = 1000;	
+		var height = 500;
+		var margin = [10,50, 30, 50];//l r o u
+		
+		var zooming = false;
+		
+		var data = [];
+		var pie_data=[];
+		var groupConnectionLines=[];
+		var tt;
+		
+		var div = d3.select("body").append("div")   
+					.attr("class", "tooltip")               
+					.style("opacity", 0);
+		
+		var incomeGroup = function(d){
+			if (d.GDP_average > 12476){
+				return "HIGH INCOME";
+			} else if (d.GDP_average > 4036){
+				return "UPPER MIDDLE INCOME";
+			} else if (d.GDP_average > 1026){
+				return "LOWER MIDDLE INCOME";
+			} else {
+				return "LOW INCOME";
+			}
+		};
+		var bl = function(d){
+			return d == "true";
+		}
+		
+		var isSimilar = function(d,r){
+			return ((r.type == "region" && d.Region == r.id) ||
+					//(r.type == "income" && incomeGroup(d) == r.id) ||
+					(r.type == "group" && bl(d[r.id])));
+		}
+		
+		var isActive = function(d,_d){
+			return (d == _d || 
+					bl(d.European_Union) && bl(_d.European_Union) ||
+					d.Region == _d.Region ||
+					//d.Web_Index_score
+					//incomeGroup(d.GDP_average) == incomeGroup(_d.GDP_average) ||
+					//Universal_Access,Users,Access_Electricity,Assumed,
+					bl(d.African_Union) && bl(_d.African_Union) || 
+					bl(d.OECD) && bl(_d.OECD) ||
+					bl(d.OSCE) && bl(_d.OSCE) ||
+					bl(d.NAFTA) && bl(_d.NAFTA) ||
+					bl(d.MERCOSUR) && bl(_d.MERCOSUR) || 
+					bl(d.OIC) && bl(_d.OIC) ||
+					bl(d.Arab_League) && bl(_d.Arab_League) ||
+					bl(d.ECO) && bl(_d.ECO))
+		}
+		
+		var sameGroup = function(d,_d){
+			return (d.European_Union == _d.European_Union ||
+					d.African_Union == _d.African_Union || 
+					d.OECD == _d.OECD ||
+					d.OSCE == _d.OSCE ||
+					d.NAFTA == _d.NAFTA ||
+					d.MERCOSUR == _d.MERCOSUR || 
+					d.OIC == _d.OIC ||
+					d.Arab_League == _d.Arab_League ||
+					d.ECO == _d.ECO)
+		}
+		
+		var pdist = function(p,_p){
+			return Math.sqrt(Math.pow(p.x-_p.x, 2) + Math.pow(p.y-_p.y, 2));
+		}
+		
+		d3.selection.prototype.moveToFront = function() {
+			return this.each(function(){
+				this.parentNode.appendChild(this);
+			});
+		};
+		
+		var contains = function(a, obj) {
+			for (var i = 0; i < a.length; i++) {
+				if (a[i] === obj) {
+					return true;
+				}
+			}
+			return false;
+		};
+							
+		/************
+		*	SCALES 	* 
+		*	  &		*
+		* 	 SVG	*
+		*************/
+
+		/* SCALES ARE ALWAYS 0-100 */
+		var xScale = d3.scale.log()
+		//var xScale = d3.scale.linear()
+						.nice() 
+						.domain([0,100])
+						.range([margin[0],width-margin[1]]);
+								
+		var yScale = d3.scale.linear()
+						.nice()
+						.domain([100,0])
+						.range([margin[2],height-margin[3]]);
+			
+		var svg = d3.select("#svg")
+				.append("svg")
+				.attr("width", width)
+				.attr("height", height)
+				.on("click", function(){
+					if (!zooming){ reset(); }
+				})
+				.on("wheel", function(e){
+					console.log("wheeeeee " + e);
+				});
+
+		var tickF = d3.format(".1.1s$");
+		var xAxis = d3.svg.axis()
+			.scale(xScale)
+			.orient("bottom")
+			.ticks(10)
+			.tickFormat(function(d) { return "$" + tickF(d); });
+			
+		var yAxis = d3.svg.axis()
+			.scale(yScale)
+			.orient("right")
+			.ticks(10);
+
+		svg.append("g")
+			.attr("class", "xaxis")
+			.attr("transform", "translate(0,"+(height-margin[3]+imgSize[1])+")")
+			.call(xAxis);
+		
+		svg.selectAll(".xaxis text")
+			.attr("transform", function(d) {
+				return "translate(" + this.getBBox().height * -2 + "," + this.getBBox().height + ")rotate(-45)";
+			});
+
+		svg.append("g")
+			.attr("class", "yaxis")
+			.attr("transform", "translate("+(width-40)+",0)")
+			.call(yAxis);			
+			
+		/****************
+		*	LOAD CSV 	* 
+		*****************/
+		
+		d3.csv("web-score-enriched.csv", function(_data) {			
+			data=_data;
+
+			xScale.domain([	d3.min(data, function(d){return parseFloat(getX(d));}),
+							d3.max(data, function(d){return parseFloat(getX(d));})]);
+			yScale.domain([d3.max(data, function(d){return parseFloat(getY(d));}	),1]);			
+
+							  			
+			/********************
+			*	INCOME GROUPS 	* 
+			*********************/
+			var incomeGroups = [{idx: 0, group: "HIGH INCOME", x: 12476, w: d3.max(data, function(d){return getX(d);})},
+								{idx: 1, group: "UPPER MIDDLE INCOME", x:  4036, w: 12476}, 
+								{idx: 2, group: "LOWER MIDDLE INCOME", x: 1026, w: 4036}, 
+								{idx: 3, group: "LOW INCOME", x: d3.min(data, function(d){return parseInt(getX(d));}), w: 1026}];
+			
+			svg.selectAll("rect.income")
+				.data(incomeGroups)
+				.enter()
+				.append("rect")
+				.attr({
+					x: function(d){return xScale(d.x);},
+					y: yScale(yScale.domain()[0]),
+					width: function(d){
+						return xScale(d.w)-xScale(d.x);
+					},
+					height: function(d){
+						return height-margin[3]+imgSize[1]-yScale(yScale.domain()[0]);
+					},//yScale(yScale.domain()[1])-yScale(yScale.domain()[0]),
+					
+					
+					class: "incomerect",
+				})
+				.on("click", function(d){	
+					var _b = !(parseInt(xScale.domain()[0]) == parseInt(d.x) && parseInt(xScale.domain()[1]) == parseInt(d.w));
+					if (_b){
+						xScale.domain([parseInt(d.x),parseInt(d.w)]);
+
+						var activeData = data.filter(function(_d){return getX(_d) > d.x && getX(_d) < d.w});
+						yScale.domain([	d3.max(activeData, function(d){return parseFloat(getY(d));}),
+										d3.min(activeData, function(d){return parseFloat(getY(d));})]);
+						updateAll();
+					}
+					else if (!zooming){ 
+						reset(); 
+					}
+				})
+
+			svg.selectAll("line.income")
+				.data(incomeGroups)
+				.enter()
+				.append("line")
+				.attr({
+					x1: 0,//function(d){return xScale(d.w);},
+					y1: yScale(yScale.domain()[1])+margin[2],
+					x2: 0,//function(d){return xScale(d.w);},
+					y2: yScale(yScale.domain()[0]),
+					class: "incomeline",
+				});		
+				
+			svg.selectAll("text.income")
+				.data(incomeGroups)
+				.enter()
+				.append("text")
+				.text(function(d){
+					return d.group;					
+				})
+				.attr({
+					x: 0,
+					y: 0,
+					transform: function(d){
+						var _x = xScale(d.x)+12;
+						if (_x < 0 && xScale(d.w) > 30)
+							_x = 20;
+						else if (xScale(d.w)-xScale(d.x) > 50)
+							_x+=10;								
+						return 	"translate("+_x+","+(yScale(yScale.domain()[0])+2)+")"+
+								"rotate(-90)";
+					},
+					opacity: 0,
+					class: "incometext",
+				})
+							
+			/************
+			*	GROUPS 	* 
+			*************/
+			var groups = [//Region
+							{GroupIdx: 0, Group: 'European_Union'},
+							{GroupIdx: 1, Group: 'African_Union'},
+							{GroupIdx: 2, Group: 'OECD'},
+							{GroupIdx: 3, Group: 'NAFTA'},
+							{GroupIdx: 4, Group: 'MERCOSUR'},
+							{GroupIdx: 5, Group: 'OIC'},
+							{GroupIdx: 6, Group: 'Arab_League'},
+							{GroupIdx: 7, Group: 'ECO'}
+						];
+						
+			var groupCircleData = [];// the one used for circles
+			var countryGroupLayer = {};
+			groupConnectionLines = [];
+			var total = 0;	
+
+			
+			groups.forEach(function(g,j){		
+				// get according countries
+
+				activeData = data.filter(function(c){return bl(c[g.Group]);});
+				activeData = activeData.sort(function(a,b){return d3.ascending(xScale(getX(a)), xScale(getX(b)));})
+
+				//var connectedCountries = [];								
+				activeData.forEach(function(c){
+						if (c.Country in countryGroupLayer){
+							countryGroupLayer[c.Country]--;
+						} else {
+							total = 0;
+							groups.forEach(function(g,i){
+								if (bl(c[g.Group])){total++;}
+							})
+							countryGroupLayer[c.Country] = total;							
+						}
+						
+						var newData = {
+							Country: c.Country,
+							Web_Index_score: c.Web_Index_score,
+							GDP_average: c.GDP_average,
+							Universal_Access: c.Universal_Access,
+							Users: c.Users,
+							Access_Electricity: c.Access_Electricity,
+							Layer: countryGroupLayer[c.Country],
+							Group: g.Group,
+							GroupIdx: j,
+							};
+						newData[g.Group] = "true";
+						groupCircleData.push(newData);
+									
+						//for lines
+						/*
+						var p = {"x":xScale(getX(c)), "y":yScale(getY(c))};
+						var minD = width+height;
+						var minC;
+						activeData.forEach(function(_c){
+							var _p = {"x":xScale(getX(_c)), "y":yScale(getY(_c))};
+							var _d = pdist(p, _p);
+							
+							if (c.Country != _c.Country && 
+								!(contains(connectedCountries, _c.Country)) &&
+								bl(_c[g.Group]) && 
+								_d < minD && _d > 0
+								){
+								minC = _c;
+								minD = _d;
+							}
+						});
+						
+						if (minC == undefined){
+							;
+						} else {
+							var _newData = {
+								Country: minC.Country,
+								Web_Index_score: minC.Web_Index_score,
+								GDP_average: minC.GDP_average,
+								Universal_Access: minC.Universal_Access,
+								Users: minC.Users,
+								Access_Electricity: minC.Access_Electricity,
+								Layer: countryGroupLayer[minC.Country],
+								Group: g.Group,
+								GroupIdx: j,
+							}
+							groupConnectionLines.push([newData, _newData]);
+							connectedCountries.push(c.Country);
+						}
+						*/
+				})
+			});
+			
+			groupCircleData = groupCircleData.sort(function(a,b){
+				return d3.ascending(a.GroupIdx,b.GroupIdx);
+			});
+
+			groupConnectionLines = groupConnectionLines.sort(function(a,b){
+				return d3.ascending(a[0].GroupIdx,b[0].GroupIdx);
+			});
+				
+			/*svg.selectAll("linegroup")
+				.data(groupConnectionLines)
+				.enter()
+				.append("line")				
+				.attr({					
+					x1: function(d){return xScale(getX(d[0]))},
+					y1: function(d){return yScale(getY(d[0]))},
+					x2: function(d){return xScale(getX(d[1]))},
+					y2: function(d){return yScale(getY(d[1]))},
+					class: "groupline",
+					stroke: function(d){return color(d[0].GroupIdx);},
+					"stroke-width": 0,
+				});*/
+									
+			svg.selectAll("circle.group")
+				.data(groupCircleData)
+				.enter()
+				.append("circle")
+				.attr({
+					class: "group",
+					layer: function(d){return d.Layer;},
+					r: 0,
+					fill: function(d,i){return color(d.GroupIdx);}
+				})
+				.on("mouseover", function(d){
+					if (!zooming){hoverGroup(d)};
+				})				
+				.on("mouseout", function(d){
+					if (d.Layer > 1) resetHover();
+				})
+				.on("click", function(d){
+					filters[d.Group] = !filters[d.Group];
+				})
+				
+			/************
+			*	RECTs 	* 
+			*************/
+			var rectData = [];
+			
+			groups.forEach(function(g){
+				activeData = data.filter(function(c){return bl(c[g.Group]);});				
+				var maxX = d3.max(activeData, function(_c){return parseFloat(getX(_c));})
+				var minX = d3.min(activeData, function(_c){return parseFloat(getX(_c));})
+				var maxY = d3.max(activeData, function(_c){return parseFloat(getY(_c));})
+				var minY = d3.min(activeData, function(_c){return parseFloat(getY(_c));})
+				
+				rectData.push({id: g.Group,
+								type: "group",
+								x: maxX,
+								y: maxY,
+								_x: minX,
+								_y: minY,
+				});
+			});
+			
+			var regions = [	"South_America",
+							"East_Asia_and_Pacific", 
+							"Middle_East", 
+							"South_Asia", 
+							"Europe_and_Central_Asia", 
+							"North_America", 
+							"Central_America_Caribean",
+							"Africa"];
+							
+			regions.forEach(function(r){
+				activeData = data.filter(function(c){return c.Region == r;});
+				var maxX = d3.max(activeData, function(_c){return parseFloat(getX(_c));})
+				var minX = d3.min(activeData, function(_c){return parseFloat(getX(_c));})
+				var maxY = d3.max(activeData, function(_c){return parseFloat(getY(_c));})
+				var minY = d3.min(activeData, function(_c){return parseFloat(getY(_c));})
+				
+				rectData.push({id: r,
+								type: "region",
+								x: maxX,
+								y: maxY,
+								_x: minX,
+								_y: minY,
+				});
+			});
+									
+			svg.selectAll("rect.similar")
+				.data(rectData)
+				.enter()
+				.append("rect")
+				.attr({
+					class: function(d){return "similar"},
+					"x": function(d){return xScale(d._x)-imgSize[0];},
+					"y": function(d){return yScale(d.y)-imgSize[1];},
+					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
+					"height": function(d){return  d3.min([height-margin[3]-yScale(d.y)+imgSize[1]*1.5,
+														  yScale(d._y)-yScale(d.y)+imgSize[0]*2]);},
+					"stroke": function(d,i){if (d.type == "group") return color(i);										 
+										  else if (d.type == "region") return "pink";},
+					"opacity": 0,
+				})
+			
+			svg.selectAll("text.similar")
+				.data(rectData)
+				.enter()
+				.append("text")			
+				.text(function(d){				
+					return d.id.replace(/_/g," ");})
+				.attr({
+					class: function(d){return "similartext"},
+					"x": function(d){return xScale(d._x)-imgSize[1];},
+					"y": function(d){return yScale(d.y);},
+					"fill": function(d,i){if (d.type == "group") return color(i);										 
+										  else if (d.type == "region") return "black";},
+					"opacity": 0,
+				})
+				
+			/*********
+			*	PIES * 
+			**********/		
+			data.forEach(function(c){
+				var _data = [];
+				var _attr = {Country: c.Country,
+							Web_Index_score: c.Web_Index_score,
+							GDP_average: c.GDP_average,
+							Users: c.Users,
+							Access_Electricity: c.Access_Electricity};
+							
+				for (var i=0; i<4;i++){
+					var attr = {};
+					for (var attrname in _attr) { attr[attrname] = _attr[attrname]; }
+					
+					if (i==0) attr["pie_data"] = c.Universal_Access;
+					else if (i==1) attr["pie_data"] = c.Relevant_Content;
+					else if (i==2) attr["pie_data"] = c.Freedom_and_Openness;
+					else if (i==3) attr["pie_data"] = c.Impact_and_Empowerment;
+					
+					_data.push(attr);
+				}
+				pie_data.push(_data);
+			});
+			
+			var pie_color = d3.scale.ordinal()
+				.range(['#a6cee3','#1f78b4','#b2df8a','#33a02c']);
+
+			var arc = d3.svg.arc()
+				.outerRadius(function(d){return d.value/30.0*global_r;})
+				.innerRadius(0);//function(d){return 10+Math.min(1,(50-d.value/30.0))*global_r*1.2});
+
+			var pie = d3.layout.pie()
+				.sort(null)
+				.value(function(d) {return d.pie_data;});
+
+			pie_data.forEach(function(d,i){
+				console.log(d);
+				var chunk = pie(d);
+				chunk.forEach(function(_d, j){
+					for (var attrname in pie_data[i][j]) { chunk[j][attrname] = pie_data[i][j][attrname]; }					
+				})
+				
+				var g = svg.selectAll(".arc_"+i)
+					.data(pie(d))
+					.enter().append("g")
+					.attr({
+						"transform": function(){return "translate("+xScale(getX(pie_data[i][0]))+","+yScale(getY(pie_data[i][0]))+")";},
+						class: "pie-arc",
+					});
+					
+				g.append("path")
+					.attr("d", arc)
+					.style("fill", function(d,i) { return pie_color(i); });
+			});
+			
+			//helper
+			var helperData = [	{pie_data: 68.6, name: "Universal Access"},
+							{pie_data: 67.1, name: "Relevant Content"},
+							{pie_data: 47.1, name: "Freedom + Openness"},
+							{pie_data: 38.42, name: "Impact + Empowerm."}];
+			arc.outerRadius(function(d){return d.value/20.0*global_r;})
+			var g = svg.selectAll(".explain-arc")
+				.data(pie(helperData))
+				.enter().append("g")
+				.attr({
+					"transform": function(){return "translate("+(40)+","+(80)+")";},
+					class: "explain-pie",
+					opacity: 1,
+				});
+			
+			g.append("path")
+				.attr("d", arc)
+				.style("fill", function(d,i) { return pie_color(i); });
+
+			svg.selectAll(".pie-helper")
+				.data(helperData)
+				.enter()
+				.append("rect")
+				.attr({
+					x: 80,
+					y: function(d,i){return 0+i*20+50;},
+					width: 10,
+					height: 10,					
+					class: "pie-button",
+					fill: function(d,i){return pie_color(i);},
+					opacity: 1,
+				})
+				.on("click", function(d){
+					//filters[d.Group]=!filters[d.Group];				
+				})
+				.on("mouseover",function(d){
+					//hoverGroup(d);
+				})
+
+				svg.selectAll(".pie-helper-text")
+					.data(helperData)
+					.enter()
+					.append("text")
+					.text(function(d){return d.name;})
+					.attr({
+						x: 95,
+						y: function(d,i){return 0+i*20+60;},
+						class: "pie-text",
+						fill: "black",
+						opacity: 1,
+					})				
+			
+			/****************
+			*	COUNTRIES 	* 
+			*****************/
+			
+			countries = svg.selectAll("img.country")
+				.data(data)
+				.enter()
+				.append("svg:image")
+				.attr({
+					"xlink:href": function(d){ return "img-flags/"+d.A2+".png";},
+					//x: function(d){return xScale(getX(d))-imgSize[0]/2;},					
+					//y: function(d){return yScale(getY(d))-imgSize[1]/2;},
+					width: imgSize[0],
+					height: imgSize[1],		
+					class: "imgcountry",
+				})
+				.on("mouseover", function(d) {					
+				
+					div.transition()        
+						.duration(200)      
+						.style("opacity", .9);      
+					div .html(d.A3)  
+						.style("left", (d3.event.pageX) + 20 + "px")     
+						.style("top", (d3.event.pageY - 20) + "px");    
+						
+					if (!zooming){hoverCountry(d)};
+				})                  
+				.on("mouseout", function(d) {       
+					div.transition()        
+						.duration(transitionDuration)      
+						.style("opacity", 0);   
+						
+					//resetHover();
+				})
+				.on("click", function(d){
+					setFilter(d);					
+				});
+							
+			updateAll();
+						
+			svg.selectAll(".groupbutton")
+				.data(groups)
+				.enter()
+				.append("rect")
+				.attr({
+					x: width-150,
+					y: function(d,i){return height-250+i*20+margin[3];},
+					width: 90,
+					height: 20,					
+					class: "groupbutton",
+					fill: function(d,i){return color(i);},
+					opacity: .3,
+				})
+				.on("click", function(d){
+					if (!filters.pie)
+						filters[d.Group]=!filters[d.Group];				
+				})
+				.on("mouseover",function(d){
+					if (!filters.pie)
+						hoverGroup(d);
+				})
+
+			svg.selectAll(".grouptext")
+				.data(groups)
+				.enter()
+				.append("text")
+				.text(function(d){return d.Group.replace("_", " ");})
+				.attr({
+					x: width-150,
+					y: function(d,i){return height-250+i*20+margin[3]+13;},
+					class: "grouptext",
+				})				
+		});
+		
+		/********************
+		*	BUTTONS etc. 	* 
+		*********************/		
+
+		d3.selectAll("#acess-electricity")
+			.on("click", function(){
+				getY = function(d){return d.Universal_Access};
+				getX = function(d){return d.Access_Electricity};
+				
+				svg.selectAll("circle")
+					.attr("opacity", function(d){if (d.Access_Electricity == "") return 0});
+				gdp = false;					
+				
+				reset();
+			})		
+
+		d3.selectAll("#score-gdp")
+			.on("click", function(){
+				getY = function(d){return d.Web_Index_score};
+				getX = function(d){return d.GDP_average};
+				
+				svg.selectAll("circle")
+					.attr("opacity", 1);
+				gdp = true;	
+				reset();
+			})		
+		
+		d3.selectAll("#reset")
+			.on("click", function(){				
+				reset();
+			})	
+
+		d3.selectAll("#pie-chart")
+			.on("click", function(){
+				if (filters.pie){
+					document.getElementById("pie-chart").innerHTML="<img src='img/iconmonstr-pie-chart-2-icon.svg' height='40px' alt='pie charts' title='Display small charts, displaying further Informations about the Overall score.'/>"		
+					filters.pie = false;
+					updateAll();
+				} else {
+					document.getElementById("pie-chart").innerHTML="<img src='img/iconmonstr-globe-4-icon.svg' height='40px' alt='regions' title='Switch back to World and Region-view.'/>"		
+					filters.pie = true;
+					updateAll();
+				}
+				
+			})	
+
+		d3.selectAll("#log")
+			.on("click", function(){
+				if (filters.log){
+					document.getElementById("log").innerHTML="<img src='img/iconmonstr-cursor-horizontal-icon.svg' height='40px' alt='log scale' title='Switch back to distorted view (log scale).'/>"				
+					
+					xScale = d3.scale.linear()
+								.nice()
+								.domain([	d3.min(data, function(d){return parseFloat(getX(d));}),
+											d3.max(data, function(d){return parseFloat(getX(d));})])					
+								.range([margin[0],width-margin[1]]);
+								
+					var tickF = d3.format(".1.1s$");
+					xAxis.scale(xScale)
+							.ticks(10)						
+							.tickFormat(function(d) { return "$" + tickF(d); });
+							
+					updateAll();
+					filters.log = false;
+				} else {
+					document.getElementById("log").innerHTML="<img src='img/iconmonstr-cursor-horizontal-2-icon.svg' height='40px' alt='linear scale' title='Switch from distorted view to a view which is true to scale.'/>"				
+					xScale = d3.scale.log()
+								.nice()
+								.domain([	d3.min(data, function(d){return parseFloat(getX(d));}),
+											d3.max(data, function(d){return parseFloat(getX(d));})])
+								.range([margin[0],width-margin[1]]);
+
+					var tickF = d3.format(".1.1s$");								
+					xAxis.scale(xScale)
+						.ticks(10)						
+						.tickFormat(function(d) { return "$" + tickF(d); });
+					
+					updateAll();	
+					filters.log = true;
+				}
+			})	
+		
+		/********************
+		*	LITTLE HELPER 	* 
+		*********************/
+		function updateAll(){	
+			console.log("update all");
+			zooming = true;
+
+			d3.selectAll(".similar")				
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"x": function(d){return xScale(d._x)-imgSize[0];},
+					"y": function(d){return yScale(d.y)-imgSize[1];},
+					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
+					"height": function(d){
+						return d3.min(	height-margin[3]+imgSize[1]-yScale(yScale.domain()[0]),
+										yScale(d._y)-yScale(d.y)+imgSize[0]*2);},
+					"stroke": function(d,i){if (d.type == "group") return color(i);										 
+										  else if (d.type == "region") return "black dashed";},					
+				})
+				
+			svg.selectAll(".similartext")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"x": function(d){
+						if (xScale(d._x)-imgSize[1] < 0 && xScale(d.x) > 100){
+							return 20;
+						}
+							
+						else return xScale(d._x)-imgSize[1];
+					},							
+					"y": function(d){
+						if (d.type == "region") return yScale(d.y)-20;
+						else return yScale(d.y)+6;
+					},
+				})
+				
+			svg.selectAll(".incomeline")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					x1: function(d){return xScale(d.x);},
+					x2: function(d){return xScale(d.x);},
+					opacity: function(d){
+						if (!gdp || xScale(d.x) > width-margin[1]){return 0;}
+						else {return 1;}
+					}
+				})
+
+			svg.selectAll(".incomerect")			
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					x: function(d){return xScale(d.x);},
+					width: function(d){return xScale(d.w)-xScale(d.x);},
+					opacity: function(d){
+						if (!gdp || yScale(d.y) > height-margin[1]+10){return 0;}
+						else {return 1;}
+					}
+				})				
+				
+			svg.selectAll(".incometext")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+						x: 0,
+						y: 0,
+						transform: function(d){
+							var _x = xScale(d.x)+22;
+							if (_x < 0 && xScale(d.w) > 30)
+								_x = 20;
+							else if (xScale(d.w)-xScale(d.x) > 50)
+								_x+=10;								
+							return 	"translate("+_x+","+(yScale(yScale.domain()[1])+2)+")"+
+									"rotate(-90)";
+						},
+						opacity: function(d){
+							if (!gdp || 
+								xScale(d.w)-xScale(d.x) < 20 ||
+								d.x > xScale.domain()[1]) {
+								return 0;
+							}
+							else {
+								return 1;
+							}
+						}
+				})		
+										
+			d3.selectAll(".pie-arc")				
+				.transition()
+				.duration(transitionDuration)	
+				.attr({	"transform": function(_d,i){
+										return 	"translate("
+												+xScale(getX(_d.data))
+												+","
+												+yScale(getY(_d.data))
+												+")";},
+						"opacity":function(d){
+							if (getX(d) > xScale.domain()[1] || 
+								getX(d) < xScale.domain()[0] ||
+								!filters.pie){
+								return 0;
+							} else if (filters.pie){
+								return 1;
+							}},
+				})
+				
+			d3.selectAll(".imgcountry")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					x: function(d){return xScale(getX(d))-imgSize[0]/2;},
+					y: function(d){return yScale(getY(d))-imgSize[1]/2;},					
+					opacity: function(d){
+						if (getX(d) > xScale.domain()[1] || 
+							getX(d) < xScale.domain()[0]){
+							return 0;
+						} else {
+							return 1;
+						}
+					},
+				});
+				
+			/*d3.selectAll(".groupline")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					class: "groupline",
+					x1: function(d){return xScale(getX(d[0]))},
+					y1: function(d){return yScale(getY(d[0]))},
+					x2: function(d){return xScale(getX(d[1]))},
+					y2: function(d){return yScale(getY(d[1]))},
+				});*/
+				
+			d3.selectAll(".group")
+				.transition()
+				.duration(transitionDuration)				
+				.attr({
+					cx: function(d){
+						return xScale(getX(d));},
+					cy: function(d){return yScale(getY(d));},
+					r: function(d){
+						if (filters[d.Group])
+							return global_r+groupSteps*d.Layer;
+						else 
+							return 0;
+					}
+				})
+				.each("end", function(){zooming = false});				
+
+			d3.selectAll(".groupbutton")
+				.attr({
+					fill: function(d,i){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						return color(i);},
+					opacity: function(d){
+						if (!filters.pie && filters[d.Group]) return 1;
+						else return 0;
+					}
+				})
+
+			d3.selectAll(".grouptext")
+				.attr({
+					fill: function(){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						return "black";},
+					opacity: function(d){
+						if (!filters.pie) return 1;
+						else return 0;
+					}						
+				})
+
+			svg.select(".xaxis")
+				.transition()
+				.duration(function(){
+					var sel = d3.select(this);
+					sel.moveToFront();
+					return transitionDuration;
+				})
+				.call(xAxis);
+
+			svg.selectAll(".xaxis text")
+				.attr("transform", function(d) {
+					return "translate(" + this.getBBox().height * -1.2 + "," + this.getBBox().height + ") rotate(-60)";
+				});
+				
+				
+			svg.select(".yaxis")
+				.transition()
+				.duration(function(){
+					var sel = d3.select(this);
+					sel.moveToFront();
+					return transitionDuration;
+				})
+				.call(yAxis);		
+
+			svg.selectAll(".explain-pie")
+				.attr({opacity: function(d){
+						if (filters.pie) return 1;
+						else return 0;
+						},
+					})
+			svg.selectAll(".pie-text")
+				.attr({opacity: function(d){
+						if (filters.pie) return 1;
+						else return 0;
+						},
+					})			
+			svg.selectAll(".pie-button")	
+				.attr({opacity: function(d){
+						if (filters.pie) return 1;
+						else return 0;
+						},
+					})
+		}
+				
+		function reset(){
+			console.log("reset");
+			
+			xScale.domain([	d3.min(data, function(d){return parseFloat(getX(d));}),
+							d3.max(data, function(d){return parseFloat(getX(d));})]);						
+			yScale.domain([d3.max(data, function(d){return parseFloat(getY(d));}),1]);			
+
+			
+			resetHover();			
+			updateAll();
+			
+			if (!filters.pie)
+				d3.selectAll(".group")
+					.attr("fill", function(_d){				
+						return color(_d.GroupIdx);
+					});
+			
+		}
+		
+		function resetHover(){
+			console.log("reset hover");
+			
+			/*d3.selectAll(".groupline")
+				.transition()
+				.delay(delayDuration)
+				.duration(transitionDuration)
+				.attr("stroke-width", 0);*/
+								
+			d3.selectAll(".similar")				
+				.transition()
+				.delay(delayDuration)
+				.duration(transitionDuration)
+				.attr({
+					"opacity": 0,
+					"x": function(d){return xScale(d._x)-imgSize[0];},
+					"y": function(d){return yScale(d.y)-imgSize[1];},
+					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
+					"height": function(d){
+						return d3.min(	height-margin[3]+imgSize[1]-yScale(yScale.domain()[0]),
+										yScale(d._y)-yScale(d.y)+imgSize[0]*2);},
+					"fill": function(d,i){if (d.type == "group") return color(i);										 
+									  else if (d.type == "region") return "black";},					
+				})
+				
+			svg.selectAll(".similartext")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"opacity": 0,
+				})			
+			d3.selectAll(".group")
+				.transition()
+				.duration(transitionDuration)
+				.attr("r", function(_d){						
+					var sel = d3.select(this);
+					sel.moveToFront();
+					
+					if (!filters.pie && filters[_d.Group]) return _d.Layer*groupSteps+global_r;
+					else return 0;
+				})
+				.attr("fill", function(_d){
+					return color(_d.GroupIdx);
+				});
+
+			d3.selectAll(".country")
+				.transition()
+				.duration(transitionDuration)
+				.attr("fill", function(_d){														
+						var sel = d3.select(this);
+						sel.moveToFront();
+					
+						return "black";
+				});	
+
+			d3.selectAll(".imgcountry")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					opacity: function(){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						
+						return 1;},
+				});	
+			
+			d3.selectAll(".groupbutton")
+				.transition()
+				.duration(transitionDuration)
+				.attr("opacity", function(){
+					if (filters.pie) return 0;
+					else return .3});
+
+		}
+		
+		function hoverCountry(d){			
+
+			if (filters.pie){
+				svg.selectAll(".explain-pie")
+					.transition()
+					.duration(transitionDuration)
+					.attr({opacity: 0})
+				svg.selectAll(".pie-text")
+					.transition()
+					.duration(transitionDuration)
+					.attr({opacity: 0})
+				svg.selectAll(".pie-button")	
+					.transition()
+					.duration(transitionDuration)
+					.attr({opacity: 0})
+			}
+					
+			/*d3.selectAll(".groupline")
+				.transition()
+				.delay(delayDuration)
+				.duration(transitionDuration)
+				.attr("stroke-width", function(_d){
+					if (sameGroup(d, _d[0])){
+						return d3.min(imgSize)-_d[0].GroupIdx*2;
+					}
+					else {
+						return 0;
+					}
+				})*/
+
+			d3.selectAll(".similar")				
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"opacity": function(_d){
+						return isSimilar(d,_d)? .7: 0;
+					},			
+					"x": function(d){return xScale(d._x)-imgSize[0];},
+					"y": function(d){return yScale(d.y)-imgSize[1];},
+					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
+					"height": function(d){return  d3.min([height-margin[3]-yScale(d.y)+imgSize[1]*1.5,
+														  yScale(d._y)-yScale(d.y)+imgSize[0]*2]);},
+					"stroke": function(d,i){if (d.type == "group") return color(i);										 
+										  else if (d.type == "region") return "black";},										
+					"stroke-width": 10,										
+										  
+				})
+
+			svg.selectAll(".similartext")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"opacity": function(_d){
+						return isSimilar(d,_d)? 1. : 0;},
+					"x": function(d){
+						if (xScale(d._x)-imgSize[1] < 0 && 
+							xScale(d.x)-xScale(d._x)+imgSize[0]*2 > 100){
+							return 20;
+						}
+						else return xScale(d._x)-imgSize[1];
+					},							
+					"y": function(d){
+						if (d.type == "region") return yScale(d.y)-20;
+						else return yScale(d.y)+6;
+					},
+				})
+				
+			d3.selectAll(".group")
+				.transition()
+				.duration(transitionDuration)
+				.attr("r", function(_d){											
+					if (!filters.pie && sameGroup(d,_d)){
+					
+						var sel = d3.select(this);
+						sel.moveToFront();
+						
+						return this.getAttribute("layer")*groupSteps+global_r;
+					} 
+					else {
+						return 0;
+					}
+				})
+				.attr("fill", function(_d){
+					if (sameGroup(d,_d)){
+						return color(_d.GroupIdx);
+					} else {
+						return "lightgrey";
+					}
+					
+				})
+
+			d3.selectAll(".country")		
+				.attr("fill", function(_d){	
+					if (isActive(d,_d)){
+						var sel = d3.select(this);
+						sel.moveToFront();
+					
+						return "black";
+					} 
+					else {
+						return "lightgrey";
+					}
+				});
+				
+			d3.selectAll(".imgcountry")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					opacity: function(_d){
+						if (isActive(d,_d)){
+							var sel = d3.select(this);
+							sel.moveToFront();
+						
+							return 1;
+						} else {
+							return 0.1;
+						}
+					}
+				});
+		}
+		
+		
+		function hoverGroup(d){	
+			if (filters.pie) return;
+			
+			/*d3.selectAll(".groupline")
+				.transition()
+				.delay(delayDuration)
+				.duration(transitionDuration)
+				.attr("stroke-width", function(_d){
+					if (isActive(d, _d[0])){
+						return d3.max(imgSize);
+					}
+					else {
+						return 0;
+					}
+				})*/
+			d3.selectAll(".groupbutton")
+				.transition()
+				.duration(transitionDuration)
+				.attr("opacity", function(_d){
+					if (d.Group == _d.Group)
+						return 1;
+					else
+						return .3;
+				})
+				
+			d3.selectAll(".group")
+				.transition()
+				.duration(transitionDuration)
+				.attr("r", function(_d){
+					if (d.Group == _d.Group ||
+						filters[_d.Group]){
+						return groupSteps+global_r*1.5;
+					} 
+					else {
+						return 0;
+					}
+				})
+				.attr("fill", function(_d){
+					if (d.Group == _d.Group ||
+						filters[_d.Group]){
+						return color(_d.GroupIdx);
+					} else {
+						return "lightgrey";
+					}
+				})
+				
+			d3.selectAll(".country")
+				.attr("fill", "lightgrey");
+
+			d3.selectAll(".imgcountry")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					opacity: function(_d){
+						if (_d[d.Group]){
+							var sel = d3.select(this);
+							sel.moveToFront();
+						
+							return 1;
+						} else {
+							return 0.3;
+						}
+					}
+				});				
+
+			//d3.selectAll(".groupbutton")				
+		}
+		
+		function setFilter(d){
+		
+			filters.European_Union=d.European_Union;
+			filters.African_Union=d.African_Union;
+			filters.OECD=d.OECD;
+			filters.NAFTA=d.NAFTA;
+			filters.MERCOSUR=d.MERCOSUR;
+			filters.OIC=d.OIC;
+			filters.Arab_League=d.Arab_League;
+			filters.ECO=d.ECO;
+			
+			var activeData = data.filter(function(_d){return isActive(_d,d);});
+			if (activeData.length < 2) return;
+			
+			var yrange = [d3.min(activeData, function(d){return parseFloat(getY(d));}), 
+						 d3.max(activeData, function(d){return parseFloat(getY(d));})];			
+			var xrange = [d3.min(activeData, function(d){return parseFloat(getX(d));}), 
+						 d3.max(activeData, function(d){return parseFloat(getX(d));})];			
+						 
+			xScale.domain([xrange[0],xrange[1]]);			
+			yScale.domain([yrange[1],yrange[0]]);
+						
+			updateAll();
+		}
+	</script>
+
+    </body>
+</html>
