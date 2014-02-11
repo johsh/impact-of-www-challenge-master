@@ -35,7 +35,7 @@ div{
 
 #nav-tools {
 	float: left;
-	width: 50px;
+	width: 70px;
 	background: #ffffff;
 }
 
@@ -132,11 +132,15 @@ div.tooltip {
 	pointer-events: none;
 }
 
+.grouptext {
+	text-align: middle;
+}
+
 .incometext {	
-	text-anchor: start;
-	font-size: 30px;
+	//text-anchor: start;
+	//font-size: 30px;
 	fill: black;
-	opacity: .3;
+	opacity: .5;
 }
 		
 .groupbutton:hover {
@@ -154,7 +158,8 @@ div.tooltip {
 	shape-rendering: crispEdges;
 }
 .incomerect {
-	fill: white;
+	fill: lightgrey;
+	margin: 5px;
 	
 }
 .incomerect:hover{		
@@ -170,8 +175,8 @@ div.tooltip {
 	shape-rendering: crispEdges;
 }
 .similar:hover{
-	fill: LightSalmon;
-	opacity: .5;
+	//fill: LightSalmon;
+	//opacity: .5;
 }
 .pie-arc{
 }

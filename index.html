@@ -11,7 +11,7 @@
 	
 	<div id="wrapper">
 		<div id="nav-tools">
-			<div id="reset"><img src="img/iconmonstr-magnifier-7-icon.svg" height="40px" alt="reset" title="Zoom out, reset view."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div><div id="log"><img src="img/iconmonstr-cursor-horizontal-2-icon.svg" height="40px" alt="linear scale" title="Switch from distorted view to a view which is true to scale."/></div>
+			<div id="reset"><img src="img/iconmonstr-magnifier-6-icon.svg" height="40px" alt="reset" title="Zoom out, reset view."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div><div id="log"><img src="img/iconmonstr-cursor-horizontal-2-icon.svg" height="40px" alt="linear scale" title="Switch from distorted view to a view which is true to scale."/></div>
 			<p id="acess-electricity"></p>
 			<p id="score-gdp"></p>	
 		</div>
@@ -69,6 +69,7 @@
 			pie:false,
 			Country:"",
 			Income:"",
+			Zoom: false,
 		};
 		
 		var transitionDuration = 500;
@@ -92,7 +93,10 @@
 		
 		var width = 1000;	
 		var height = 500;
-		var margin = [10,50, 30, 50];//l r o u
+		var margin = [10,50, 60, 50];
+		
+		var toolsWidth = 75;
+		var toolsHeight = 200;
 		
 		var zooming = false;
 		
@@ -130,9 +134,7 @@
 			return (d == _d || 
 					bl(d.European_Union) && bl(_d.European_Union) ||
 					d.Region == _d.Region ||
-					//d.Web_Index_score
-					//incomeGroup(d.GDP_average) == incomeGroup(_d.GDP_average) ||
-					//Universal_Access,Users,Access_Electricity,Assumed,
+					(filters.Income != "" && incomeGroup(d.GDP_average) == incomeGroup(_d.GDP_average)) ||
 					bl(d.African_Union) && bl(_d.African_Union) || 
 					bl(d.OECD) && bl(_d.OECD) ||
 					bl(d.OSCE) && bl(_d.OSCE) ||
@@ -203,6 +205,14 @@
 					;
 				});
 
+		var groupButtonSvg = d3.select("#nav-tools")
+				.append("svg")
+				.attr("width", toolsWidth)
+				.attr("height", toolsHeight)
+				.on("click", function(){
+					;
+				})
+				
 		var tickF = d3.format(".1.1s$");
 		var xAxis = d3.svg.axis()
 			.scale(xScale)
@@ -255,16 +265,12 @@
 				.enter()
 				.append("rect")
 				.attr({
-					x: function(d){return xScale(d.x);},
-					y: yScale(yScale.domain()[0]),
+					x: function(d){return xScale(d.x)+5;},
+					y: 10,
 					width: function(d){
-						return xScale(d.w)-xScale(d.x);
+						return xScale(d.w)-xScale(d.x)-10;
 					},
-					height: function(d){
-						return height-margin[3]+imgSize[1]-yScale(yScale.domain()[0]);
-					},//yScale(yScale.domain()[1])-yScale(yScale.domain()[0]),
-					
-					
+					height: 20,					
 					class: "incomerect",
 				})
 				.on("click", function(d){	
@@ -285,8 +291,24 @@
 					} else {
 						filters.Income = "";
 					}
-					
-					/*var _b = !(parseInt(xScale.domain()[0]) == parseInt(d.x) && parseInt(xScale.domain()[1]) == parseInt(d.w));
+				})
+
+			svg.selectAll("rect.income.zoom")
+				.data(incomeGroups)
+				.enter()
+				.append("svg:image")
+				.attr({
+					"xlink:href": "img/iconmonstr-fullscreen-icon.svg",
+					x: function(d){
+						return xScale(d.w)-25;
+					},
+					y: 10,
+					width: 20,
+					height: 20,					
+					class: "incomerectzoom",
+				})
+				.on("click", function(d){
+					var _b = !(parseInt(xScale.domain()[0]) == parseInt(d.x) && parseInt(xScale.domain()[1]) == parseInt(d.w));
 					if (_b){
 						xScale.domain([parseInt(d.x),parseInt(d.w)]);
 
@@ -297,7 +319,7 @@
 					}
 					else if (!zooming){ 
 						reset(); 
-					}*/
+					}				
 				})
 
 			svg.selectAll("line.income")
@@ -320,9 +342,12 @@
 					return d.group;					
 				})
 				.attr({
+					//x: function(d){return xScale(d.x)+5;},
+					//width: function(d){return xScale(d.w)-xScale(d.x)-10;},				
+				
 					x: 0,
 					y: 0,
-					transform: function(d){
+/*					transform: function(d){
 						var _x = xScale(d.x)+12;
 						if (_x < 0 && xScale(d.w) > 30)
 							_x = 20;
@@ -331,7 +356,7 @@
 						return 	"translate("+_x+","+(yScale(yScale.domain()[0])+2)+")"+
 								"rotate(-90)";
 					},
-					opacity: 0,
+					opacity: 0,*/
 					class: "incometext",
 				})
 							
@@ -339,14 +364,14 @@
 			*	GROUPS 	* 
 			*************/
 			var groups = [//Region
-							{GroupIdx: 0, Group: 'European_Union'},
-							{GroupIdx: 1, Group: 'African_Union'},
-							{GroupIdx: 2, Group: 'OECD'},
-							{GroupIdx: 3, Group: 'NAFTA'},
-							{GroupIdx: 4, Group: 'MERCOSUR'},
-							{GroupIdx: 5, Group: 'OIC'},
-							{GroupIdx: 6, Group: 'Arab_League'},
-							{GroupIdx: 7, Group: 'ECO'}
+							{GroupIdx: 0, Group: 'European_Union', Abbr: 'EU'},
+							{GroupIdx: 1, Group: 'African_Union', Abbr: 'AU'},
+							{GroupIdx: 2, Group: 'OECD', Abbr: 'OECD'},
+							{GroupIdx: 3, Group: 'NAFTA', Abbr: 'NAFTA'},
+							{GroupIdx: 4, Group: 'MERCOSUR', Abbr: 'MERCOSUR'},
+							{GroupIdx: 5, Group: 'OIC', Abbr: 'OIC'},
+							{GroupIdx: 6, Group: 'Arab_League', Abbr: 'AL'},
+							{GroupIdx: 7, Group: 'ECO', Abbr: 'ECO'}
 						];
 						
 			var groupCircleData = [];// the one used for circles
@@ -356,12 +381,9 @@
 
 			
 			groups.forEach(function(g,j){		
-				// get according countries
-
 				activeData = data.filter(function(c){return bl(c[g.Group]);});
 				activeData = activeData.sort(function(a,b){return d3.ascending(xScale(getX(a)), xScale(getX(b)));})
-
-				//var connectedCountries = [];								
+							
 				activeData.forEach(function(c){
 						if (c.Country in countryGroupLayer){
 							countryGroupLayer[c.Country]--;
@@ -385,45 +407,7 @@
 							GroupIdx: j,
 							};
 						newData[g.Group] = "true";
-						groupCircleData.push(newData);
-									
-						//for lines
-						/*
-						var p = {"x":xScale(getX(c)), "y":yScale(getY(c))};
-						var minD = width+height;
-						var minC;
-						activeData.forEach(function(_c){
-							var _p = {"x":xScale(getX(_c)), "y":yScale(getY(_c))};
-							var _d = pdist(p, _p);
-							
-							if (c.Country != _c.Country && 
-								!(contains(connectedCountries, _c.Country)) &&
-								bl(_c[g.Group]) && 
-								_d < minD && _d > 0
-								){
-								minC = _c;
-								minD = _d;
-							}
-						});
-						
-						if (minC == undefined){
-							;
-						} else {
-							var _newData = {
-								Country: minC.Country,
-								Web_Index_score: minC.Web_Index_score,
-								GDP_average: minC.GDP_average,
-								Universal_Access: minC.Universal_Access,
-								Users: minC.Users,
-								Access_Electricity: minC.Access_Electricity,
-								Layer: countryGroupLayer[minC.Country],
-								Group: g.Group,
-								GroupIdx: j,
-							}
-							groupConnectionLines.push([newData, _newData]);
-							connectedCountries.push(c.Country);
-						}
-						*/
+						groupCircleData.push(newData);									
 				})
 			});
 			
@@ -434,21 +418,7 @@
 			groupConnectionLines = groupConnectionLines.sort(function(a,b){
 				return d3.ascending(a[0].GroupIdx,b[0].GroupIdx);
 			});
-				
-			/*svg.selectAll("linegroup")
-				.data(groupConnectionLines)
-				.enter()
-				.append("line")				
-				.attr({					
-					x1: function(d){return xScale(getX(d[0]))},
-					y1: function(d){return yScale(getY(d[0]))},
-					x2: function(d){return xScale(getX(d[1]))},
-					y2: function(d){return yScale(getY(d[1]))},
-					class: "groupline",
-					stroke: function(d){return color(d[0].GroupIdx);},
-					"stroke-width": 0,
-				});*/
-									
+													
 			svg.selectAll("circle.group")
 				.data(groupCircleData)
 				.enter()
@@ -545,6 +515,27 @@
 					"fill": function(d,i){if (d.type == "group") return color(i);										 
 										  else if (d.type == "region") return "black";},
 					"opacity": 0,
+				})
+				
+			svg.selectAll("img.similar")
+				.data(rectData)
+				.enter()
+				.append("svg:image")			
+				.attr({
+					"xlink:href": "img/iconmonstr-fullscreen-icon.svg",				
+					class: "similarzoom",
+					width: 20,
+					height: 20,
+					opacity: 0,
+				})	
+				.on("click", function(d){
+					if (d.type == "group") filters[d.id] = true;
+					filters.zoom = true;
+										
+					xScale.domain([d._x-999, d.x+999]);			
+					yScale.domain([d.y+5, d._y-5]);
+						
+					updateAll();
 				})
 				
 			/*********
@@ -701,36 +692,35 @@
 							
 			updateAll();
 						
-			svg.selectAll(".groupbutton")
+			groupButtonSvg.selectAll(".groupbutton")
 				.data(groups)
 				.enter()
 				.append("rect")
 				.attr({
-					x: width-150,
-					y: function(d,i){return height-250+i*20+margin[3];},
-					width: 90,
-					height: 20,					
+					x: 5	,
+					y: function(d,i){return i*23;},
+					width: toolsWidth-10,
+					height: 18,					
 					class: "groupbutton",
 					fill: function(d,i){return color(i);},
 					opacity: .3,
 				})
 				.on("click", function(d){
-					//if (!filters.pie)
-						//filters[d.Group]=!filters[d.Group];				
-				})
-				.on("mouseover",function(d){
-					if (!filters.pie)
+					if (!filters.pie){
 						hoverGroup(d);
+					}
+				})
+				.on("mouseover",function(d){					
 				})
 
-			svg.selectAll(".grouptext")
+			groupButtonSvg.selectAll(".grouptext")
 				.data(groups)
 				.enter()
 				.append("text")
-				.text(function(d){return d.Group.replace("_", " ");})
+				.text(function(d){return d.Abbr;})
 				.attr({
-					x: width-150,
-					y: function(d,i){return height-250+i*20+margin[3]+13;},
+					x: 7,
+					y: function(d,i){return i*23+13;},
 					class: "grouptext",
 				})				
 		});
@@ -763,8 +753,17 @@
 			})		
 		
 		d3.selectAll("#reset")
-			.on("click", function(){				
-				reset();
+			.on("click", function(){
+				if (!filters.zoom){
+					document.getElementById("reset").innerHTML="<img src='img/iconmonstr-magnifier-7-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";	
+					filters.zoom = true;
+					console.log(filters);
+					setFilter
+				} else {
+					document.getElementById("reset").innerHTML="<img src='img/iconmonstr-magnifier-6-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";
+					filters.zoom = false;
+					reset();
+				}				
 			})	
 
 		d3.selectAll("#pie-chart")
@@ -821,12 +820,17 @@
 		*	LITTLE HELPER 	* 
 		*********************/
 		function updateAll(){	
+			console.log("updateAll");
 			zooming = true;
 
 			d3.selectAll(".similar")				
 				.transition()
 				.duration(transitionDuration)
 				.attr({
+					"opacity": function(_d){
+						if (filters[_d.id]) return .7;
+						else return 0;
+					},			
 					"x": function(d){return xScale(d._x)-imgSize[0];},
 					"y": function(d){return yScale(d.y)-imgSize[1];},
 					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
@@ -841,6 +845,10 @@
 				.transition()
 				.duration(transitionDuration)
 				.attr({
+					"opacity": function(_d){
+						if (filters[_d.id]) return .7;
+						else return 0;
+					},					
 					"x": function(d){
 						if (xScale(d._x)-imgSize[1] < 0 && xScale(d.x) > 100){
 							return 20;
@@ -853,7 +861,7 @@
 						else return yScale(d.y)+6;
 					},
 				})
-				
+							
 			svg.selectAll(".incomeline")
 				.transition()
 				.duration(transitionDuration)
@@ -870,19 +878,29 @@
 				.transition()
 				.duration(transitionDuration)
 				.attr({
-					x: function(d){return xScale(d.x);},
-					width: function(d){return xScale(d.w)-xScale(d.x);},
+					x: function(d){return xScale(d.x)+5;},
+					width: function(d){return xScale(d.w)-xScale(d.x)-10;},
 					opacity: function(d){
 						if (!gdp || yScale(d.y) > height-margin[1]+10){return 0;}
 						else {return 1;}
 					}
-				})				
+				})	
+
+			svg.selectAll(".incomerectzoom")			
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					x: function(d){return xScale(d.w)-25;},
+				})
 				
 			svg.selectAll(".incometext")
 				.transition()
 				.duration(transitionDuration)
 				.attr({
-						x: 0,
+					x: function(d){return xScale(d.x)+10;},
+					y: 25,
+					width: function(d){return xScale(d.w)-xScale(d.x)-10;},				
+						/*x: 0,
 						y: 0,
 						transform: function(d){
 							var _x = xScale(d.x)+22;
@@ -892,7 +910,7 @@
 								_x+=10;								
 							return 	"translate("+_x+","+(yScale(yScale.domain()[1])+2)+")"+
 									"rotate(-90)";
-						},
+						},*/
 						opacity: function(d){
 							if (!gdp || 
 								xScale(d.w)-xScale(d.x) < 20 ||
@@ -939,17 +957,6 @@
 						}
 					},
 				});
-				
-			/*d3.selectAll(".groupline")
-				.transition()
-				.duration(transitionDuration)
-				.attr({
-					class: "groupline",
-					x1: function(d){return xScale(getX(d[0]))},
-					y1: function(d){return yScale(getY(d[0]))},
-					x2: function(d){return xScale(getX(d[1]))},
-					y2: function(d){return yScale(getY(d[1]))},
-				});*/
 				
 			d3.selectAll(".group")
 				.transition()
@@ -1033,6 +1040,20 @@
 						else return 0;
 						},
 					})
+
+			svg.selectAll(".similarzoom")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"x": function(d){
+						var sel = d3.select(this);
+						sel.moveToFront();
+						
+						return xScale(d.x)+22;
+					},
+					"y": function(d){return yScale(d.y)-18;},
+				})
+					
 		}
 				
 		function reset(){			
@@ -1066,7 +1087,10 @@
 				.delay(delayDuration)
 				.duration(transitionDuration)
 				.attr({
-					"opacity": 0,
+					"opacity": function(d){
+						if (d.type == "group" && filters[d.group]) return .7;
+						else return 0;
+					},
 					"x": function(d){return xScale(d._x)-imgSize[0];},
 					"y": function(d){return yScale(d.y)-imgSize[1];},
 					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
@@ -1081,8 +1105,22 @@
 				.transition()
 				.duration(transitionDuration)
 				.attr({
-					"opacity": 0,
-				})			
+					"opacity": function(d){
+						if (d.type == "group" && filters[d.id]) return 1;
+						else return 0;
+					},
+				})		
+
+			svg.selectAll(".similarzoom")
+				.transition()
+				.duration(transitionDuration)				
+				.attr({
+					"opacity": function(d){
+						if (d.type == "group" && filters[d.Group]) return 1;
+						else return 0;
+					},					
+				})
+				
 			d3.selectAll(".group")
 				.transition()
 				.duration(transitionDuration)
@@ -1121,8 +1159,9 @@
 			d3.selectAll(".groupbutton")
 				.transition()
 				.duration(transitionDuration)
-				.attr("opacity", function(){
+				.attr("opacity", function(d){
 					if (filters.pie) return 0;
+					else if (filters[d.Group]) return 1;
 					else return .3});
 
 		}
@@ -1145,26 +1184,15 @@
 					.attr({opacity: 0})
 			}
 					
-			/*d3.selectAll(".groupline")
-				.transition()
-				.delay(delayDuration)
-				.duration(transitionDuration)
-				.attr("stroke-width", function(_d){
-					if (sameGroup(d, _d[0])){
-						return d3.min(imgSize)-_d[0].GroupIdx*2;
-					}
-					else {
-						return 0;
-					}
-				})*/
-
 			d3.selectAll(".similar")				
 				.transition()
 				.duration(transitionDuration)
 				.attr({
 					"opacity": function(_d){
-						return isSimilar(d,_d)? .7: 0;
-					},			
+						if (isSimilar(d,_d) || 
+							(_d.type == "group" && filters[_d.id])) return .7;
+						else return 0;
+					},					
 					"x": function(d){return xScale(d._x)-imgSize[0];},
 					"y": function(d){return yScale(d.y)-imgSize[1];},
 					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
@@ -1181,20 +1209,27 @@
 				.duration(transitionDuration)
 				.attr({
 					"opacity": function(_d){
-						return isSimilar(d,_d)? 1. : 0;},
-					"x": function(d){
-						if (xScale(d._x)-imgSize[1] < 0 && 
-							xScale(d.x)-xScale(d._x)+imgSize[0]*2 > 100){
-							return 20;
-						}
-						else return xScale(d._x)-imgSize[1];
-					},							
-					"y": function(d){
-						if (d.type == "region") return yScale(d.y)-20;
-						else return yScale(d.y)+6;
-					},
+						if (isSimilar(d,_d) || 
+							(_d.type == "group" && filters[_d.id])) return .7;
+						else return 0;
+					},					
 				})
 
+			svg.selectAll(".similarzoom")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"opacity": function(_d){
+						if (isSimilar(d,_d) || 
+							(_d.type == "group" && filters[_d.id])) return .7;
+						else return 0;
+					},									
+					"x": function(d){return xScale(d.x)+22;},
+					"y": function(d){return yScale(d.y)-18;},
+					"fill": function(d,i){	if (d.type == "group") return color(i);										 
+											else if (d.type == "region") return "red";},
+				})
+				
 			var _groups = d3.selectAll(".group")
 				.sort(function(a,b){return d3.descending(a.Layer, b.Layer);});
 				
@@ -1256,27 +1291,77 @@
 		
 		function hoverGroup(d){	
 			if (filters.pie) return;
-			
-			/*d3.selectAll(".groupline")
+			console.log("hoverGroup");
+
+			d3.selectAll(".similar")				
 				.transition()
-				.delay(delayDuration)
 				.duration(transitionDuration)
-				.attr("stroke-width", function(_d){
-					if (isActive(d, _d[0])){
-						return d3.max(imgSize);
-					}
-					else {
-						return 0;
-					}
-				})*/
+				.attr({
+					"opacity": function(_d){
+						if (isSimilar(d,_d) || 
+							_d.id == d.Group) 
+							return .7;
+						else 
+							return 0;
+					},					
+					"x": function(d){return xScale(d._x)-imgSize[0];},
+					"y": function(d){return yScale(d.y)-imgSize[1];},
+					"width": function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
+					"height": function(d){return  d3.min([height-margin[3]-yScale(d.y)+imgSize[1]*1.5,
+														  yScale(d._y)-yScale(d.y)+imgSize[0]*2]);},
+					"stroke": function(d,i){if (d.type == "group") return color(i);										 
+										  else if (d.type == "region") return "black";},										
+					"stroke-width": 10,										
+										  
+				})
+
+			svg.selectAll(".similartext")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"opacity": function(_d){						
+						if (isSimilar(d,_d) || 
+							_d.id == d.Group) 
+							return .7;
+						else 
+							return 0;
+					},					
+					"x": function(d){
+						if (xScale(d._x)-imgSize[1] < 0 && 
+							xScale(d.x)-xScale(d._x)+imgSize[0]*2 > 100){
+							return 20;
+						}
+						else return xScale(d._x)-imgSize[1];
+					},							
+					"y": function(d){
+						if (d.type == "region") return yScale(d.y)-20;
+						else return yScale(d.y)+6;
+					},
+				})
+
+			svg.selectAll(".similarzoom")
+				.transition()
+				.duration(transitionDuration)
+				.attr({
+					"opacity": function(_d){						
+						if (isSimilar(d,_d) || 
+							_d.id == d.Group) 
+							return .7;
+						else 
+							return 0;
+					},			
+				})
+				
 			d3.selectAll(".groupbutton")
 				.transition()
 				.duration(transitionDuration)
 				.attr("opacity", function(_d){
-					if (d.Group == _d.Group)
+					if (d.Group == _d.Group || 
+						filters[_d.Group]){
 						return 1;
-					else
+					} else {
 						return .3;
+					}
 				})
 				
 			d3.selectAll(".group")
@@ -1346,6 +1431,32 @@
 						
 			updateAll();
 		}
+		
+		function zoomToFilter(){
+		
+			filters.European_Union=d.European_Union;
+			filters.African_Union=d.African_Union;
+			filters.OECD=d.OECD;
+			filters.NAFTA=d.NAFTA;
+			filters.MERCOSUR=d.MERCOSUR;
+			filters.OIC=d.OIC;
+			filters.Arab_League=d.Arab_League;
+			filters.ECO=d.ECO;
+			
+			var activeData = data.filter(function(_d){return isActive(_d,d);});
+			if (activeData.length < 2) return;
+			
+			var yrange = [d3.min(activeData, function(d){return parseFloat(getY(d));}), 
+						 d3.max(activeData, function(d){return parseFloat(getY(d));})];			
+			var xrange = [d3.min(activeData, function(d){return parseFloat(getX(d));}), 
+						 d3.max(activeData, function(d){return parseFloat(getX(d));})];			
+						 
+			xScale.domain([xrange[0],xrange[1]]);			
+			yScale.domain([yrange[1],yrange[0]]);
+						
+			updateAll();
+		}
+
 	</script>
 
     </body>
