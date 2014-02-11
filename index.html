@@ -67,6 +67,8 @@
 			gdp:true,
 			log:true,
 			pie:false,
+			Country:"",
+			Income:"",
 		};
 		
 		var transitionDuration = 500;
@@ -195,7 +197,7 @@
 				.attr("width", width)
 				.attr("height", height)
 				.on("click", function(){
-					if (!zooming){ reset(); }
+					//if (!zooming){ reset(); }
 				})
 				.on("wheel", function(e){
 					;
@@ -266,7 +268,25 @@
 					class: "incomerect",
 				})
 				.on("click", function(d){	
-					var _b = !(parseInt(xScale.domain()[0]) == parseInt(d.x) && parseInt(xScale.domain()[1]) == parseInt(d.w));
+					resetHover();
+					
+					if (filters.Income != d.group){
+						filters.Income = d.group;
+						
+						d3.selectAll(".imgcountry")
+							.transition()
+							.duration(transitionDuration)
+							.attr({
+								"opacity": function(_d){
+									if (incomeGroup(_d) == d.group) return 1;
+									else return .1;												  
+								}
+							});
+					} else {
+						filters.Income = "";
+					}
+					
+					/*var _b = !(parseInt(xScale.domain()[0]) == parseInt(d.x) && parseInt(xScale.domain()[1]) == parseInt(d.w));
 					if (_b){
 						xScale.domain([parseInt(d.x),parseInt(d.w)]);
 
@@ -277,7 +297,7 @@
 					}
 					else if (!zooming){ 
 						reset(); 
-					}
+					}*/
 				})
 
 			svg.selectAll("line.income")
@@ -440,13 +460,14 @@
 					fill: function(d,i){return color(d.GroupIdx);}
 				})
 				.on("mouseover", function(d){
-					if (!zooming){hoverGroup(d)};
+					//if (!zooming){hoverGroup(d)};
 				})				
 				.on("mouseout", function(d){
-					if (d.Layer > 1) resetHover();
+					//if (d.Layer > 1) resetHover();
 				})
 				.on("click", function(d){
-					filters[d.Group] = !filters[d.Group];
+					//filters[d.Group] = !filters[d.Group];
+					//updateAll();
 				})
 				
 			/************
@@ -658,7 +679,7 @@
 						.style("left", (d3.event.pageX) + 20 + "px")     
 						.style("top", (d3.event.pageY - 20) + "px");    
 						
-					if (!zooming){hoverCountry(d)};
+					//if (!zooming){hoverCountry(d)};
 				})                  
 				.on("mouseout", function(d) {       
 					div.transition()        
@@ -667,8 +688,15 @@
 						
 					//resetHover();
 				})
-				.on("click", function(d){
-					setFilter(d);					
+				.on("click", function(d){					
+					if (!zooming && filters.Country != d.Country){
+						filters.Country = d.Country;
+						hoverCountry(d)
+					} else {
+						filters.Country = "";
+						resetHover();
+					}
+					//setFilter(d);					
 				});
 							
 			updateAll();
@@ -687,8 +715,8 @@
 					opacity: .3,
 				})
 				.on("click", function(d){
-					if (!filters.pie)
-						filters[d.Group]=!filters[d.Group];				
+					//if (!filters.pie)
+						//filters[d.Group]=!filters[d.Group];				
 				})
 				.on("mouseover",function(d){
 					if (!filters.pie)
@@ -1024,7 +1052,9 @@
 			
 		}
 		
-		function resetHover(){			
+		function resetHover(){
+			console.log("resetHover");
+			
 			/*d3.selectAll(".groupline")
 				.transition()
 				.delay(delayDuration)
@@ -1098,6 +1128,7 @@
 		}
 		
 		function hoverCountry(d){			
+			console.log("hoverCountry");
 
 			if (filters.pie){
 				svg.selectAll(".explain-pie")
@@ -1163,13 +1194,14 @@
 						else return yScale(d.y)+6;
 					},
 				})
+
+			var _groups = d3.selectAll(".group")
+				.sort(function(a,b){return d3.descending(a.Layer, b.Layer);});
 				
-			d3.selectAll(".group")
-				.transition()
+			_groups.transition()
 				.duration(transitionDuration)
 				.attr("r", function(_d){											
-					if (!filters.pie && sameGroup(d,_d)){
-					
+					if (!filters.pie && sameGroup(d,_d)){					
 						var sel = d3.select(this);
 						sel.moveToFront();
 						
@@ -1218,6 +1250,9 @@
 				});
 		}
 		
+		function clickIncome(d){
+		
+		}
 		
 		function hoverGroup(d){	
 			if (filters.pie) return;

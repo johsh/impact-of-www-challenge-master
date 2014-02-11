@@ -166,9 +166,12 @@ div.tooltip {
 	stroke-dasharray: 10,10;
 	stroke-width: 10px;
 	stroke-width: 3px;
-	pointer-events: none;
 	fill:none;
 	shape-rendering: crispEdges;
+}
+.similar:hover{
+	fill: LightSalmon;
+	opacity: .5;
 }
 .pie-arc{
 }
