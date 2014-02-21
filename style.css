@@ -101,8 +101,8 @@ circle:hover{
 div.tooltip {
   position: absolute;           
   text-align: left;           
-  width: 30px;                  
-  height: 15px;                 
+  width: 140px;                  
+  height: 50px;                 
   padding: 2px;             
   font: 12px sans-serif;        
   background: lightsteelblue;   
@@ -167,11 +167,12 @@ div.tooltip {
 	opacity: .5;
 }
 
+.zoomrect,
 .similar {
 	stroke-dasharray: 10,10;
 	stroke-width: 10px;
 	stroke-width: 3px;
-	fill:none;
+	fill: none;
 	shape-rendering: crispEdges;
 }
 .similar:hover{
