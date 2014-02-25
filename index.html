@@ -65,6 +65,7 @@
 			OIC:false,
 			Arab_League:false,
 			ECO:false,
+			G8:false,
 			
 			Region:"",
 						
@@ -149,7 +150,8 @@
 					bl(d.MERCOSUR) && bl(_d.MERCOSUR) || 
 					bl(d.OIC) && bl(_d.OIC) ||
 					bl(d.Arab_League) && bl(_d.Arab_League) ||
-					bl(d.ECO) && bl(_d.ECO))
+					bl(d.ECO) && bl(_d.ECO) ||
+					bl(d.G8) && bl(_d.G8))
 		}
 		
 		var sameGroup = function(d,_d){
@@ -161,7 +163,8 @@
 					d.MERCOSUR == _d.MERCOSUR || 
 					d.OIC == _d.OIC ||
 					d.Arab_League == _d.Arab_League ||
-					d.ECO == _d.ECO)
+					d.ECO == _d.ECO ||
+					d.G8 == _d.G8)
 		}
 		
 		var pdist = function(p,_p){
@@ -478,7 +481,8 @@
 							{GroupIdx: 4, Group: 'MERCOSUR', Abbr: 'MERCOSUR'},
 							{GroupIdx: 5, Group: 'OIC', Abbr: 'OIC'},
 							{GroupIdx: 6, Group: 'Arab_League', Abbr: 'AL'},
-							{GroupIdx: 7, Group: 'ECO', Abbr: 'ECO'}
+							{GroupIdx: 7, Group: 'ECO', Abbr: 'ECO'},
+							{GroupIdx: 8, Group: 'G8', Abbr: 'G8'},
 						];
 						
 			var groupCircleData = [];// the one used for circles
@@ -777,6 +781,7 @@
 						filters.OIC = bl(d.OIC);
 						filters.Arab_League = bl(d.Arab_League);
 						filters.ECO = bl(d.ECO);
+						filters.G8 = bl(d.G8);
 			
 						filters.Region = d.Region;
 												
@@ -1003,9 +1008,25 @@
 					x: function(d){return xScale(getX(d))-imgSize[0]/2;},
 					y: function(d){return yScale(getY(d))-imgSize[1]/2;},					
 					opacity: function(d){
+						var union = false;
+						if (filters.Country != "" && d.Country == filters.Country ||
+							(filters.European_Union && bl(d.European_Union)) ||
+							(filters.African_Union && bl(d.African_Union)) ||
+							(filters.OECD && bl(d.OECD)) ||
+							(filters.NAFTA && bl(d.NAFTA)) ||
+							(filters.MERCOSUR && bl(d.MERCOSUR)) ||
+							(filters.OIC && bl(d.OIC)) ||
+							(filters.Arab_League && bl(d.Arab_League)) ||
+							(filters.ECO && bl(d.ECO)) ||
+							(filters.G8 && bl(d.G8)))
+							union = true;							
+							
+					
 						if (getX(d) > xScale.domain()[1] || 
 							getX(d) < xScale.domain()[0]){
 							return 0;
+						} else if (filters.Country != "" && !union){
+							return .3;
 						} else if (filters.Income != "" && incomeGroup(d) != filters.Income){
 							return .1;
 						} else {
@@ -1434,6 +1455,7 @@
 			filters.OIC=d.OIC;
 			filters.Arab_League=d.Arab_League;
 			filters.ECO=d.ECO;
+			filters.G8=d.G8;
 			
 			var activeData = data.filter(function(_d){return isActive(_d,d);});
 			if (activeData.length < 2) return;
@@ -1462,7 +1484,8 @@
 						(filters.MERCOSUR && bl(d.MERCOSUR)) ||
 						(filters.OIC && bl(d.OIC)) ||
 						(filters.Arab_League && bl(d.Arab_League)) ||
-						(filters.ECO && bl(d.ECO))
+						(filters.ECO && bl(d.ECO)) ||
+						(filters.G8 && bl(d.G8))
 					 ) && (filters.Income == "" || incomeGroup(d) == filters.Income)
 					) || 
 					(filters.Income != "" && incomeGroup(d) == filters.Income)					
