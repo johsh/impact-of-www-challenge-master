@@ -11,7 +11,7 @@
 	
 	<div id="wrapper">
 		<div id="nav-tools">
-			<div id="reset"><img src="img/iconmonstr-magnifier-6-icon.svg" height="40px" alt="reset" title="Zoom out, reset view."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div><div id="log"><img src="img/iconmonstr-cursor-horizontal-2-icon.svg" height="40px" alt="linear scale" title="Switch from distorted view to a view which is true to scale."/></div>
+			<div id="reset"><img src="img/iconmonstr-magnifier-6-icon.svg" height="40px" alt="reset" title="Zoom out, reset view."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div>
 			<p id="acess-electricity"></p>
 			<p id="score-gdp"></p>	
 		</div>
@@ -98,7 +98,7 @@
 		
 		var width = 1000;	
 		var height = 500;
-		var margin = [10,50, 60, 50];
+		var margin = [10,50, 60, 60];
 		
 		var toolsWidth = 75;
 		var toolsHeight = 200;
@@ -205,21 +205,42 @@
 				.append("svg")
 				.attr("width", width)
 				.attr("height", height)
-				.on("wheel", function(){hoverCountry = false;})
+				.on("wheel", function(e){
+					hoverCountry = false;
+					window.event.preventDefault();
+					window.event.stopPropagation();
+
+					zoomed();
+				})		
+				.on("mousedown", function(){
+					dragging = true;
+				})
+				.on("mousemove", function(){
+					window.event.preventDefault();
+					window.event.stopPropagation();				
+					if (dragging) dragged();
+				})
+				.on("mouseup", function(){
+					dragging = false;
+					dragStart = -1;
+				})
+				.on("drag",  function(e){
+					hoverCountry = false;
+					window.event.preventDefault();
+					window.event.stopPropagation();
+					
+					dragged();
+				})
 		
-		var dragBehavior = d3.behavior.drag()
-							.on("drag", function(){
-							dragged();
-							});
-		dragBehavior.on("dragend", function(){
-							dragStart = -1; 
-							//dragDomainStart == [];}
-						});
+		var dragging = false;
 		var dragScale = d3.scale.log()
 						.domain([0,100])
 						.range([margin[0],width-margin[1]]);
 		
-		function dragged(){		
+		function dragged(){	
+			console.log("drag");
+			tt = window.event;
+			
 			//set starting point
 			if (dragStart == -1)
 			{
@@ -250,36 +271,32 @@
 		}
 						
 		/** ZOOM **/
-		var zoomBehavior = d3.behavior.zoom()	
-						.scaleExtent([1,4])						
-						.on("zoom", function(e){							
-							if (!hoverCountry && d3.event.sourceEvent.type == "wheel")
-							{
-								zoomed();
-							}
-						});
-		svg.call(zoomBehavior);
-		svg.call(dragBehavior);
-		
+		var zoomScale = 1;
+		var zoomTranslate
 		var _scale = d3.scale.log()
 						.domain([0,100])
 						.range([margin[0],width-margin[1]]);
 					
 		function zoomed() {
-			if (d3.event.scale == 1)
-			{
-				d3.event.translate = [0,0]
+			if (window.event.wheelDelta > 0 && zoomScale < 6) zoomScale++;
+			else if (window.event.wheelDelta < 0 && zoomScale >= 2) zoomScale-=2;
+			else return;			
+			
+			console.log(zoomScale);
+			
+			if (zoomScale == 1)
+			{				
+				zoomTranslate = [0,0]
 			}
-						
+			
 			// get offset, invert + scaling factor
-			var offsetX = d3.event.sourceEvent.offsetX;
+			var offsetX = window.event.offsetX;
 			var invOffsetX = xScale.invert(offsetX); //starting point
-			var scaling = Math.pow(d3.event.scale,2);
 			
 			//get new left + right
-			var invLeft = d3.max([	_scale.invert(_scale(invOffsetX) - offsetX/(scaling)), 
+			var invLeft = d3.max([	_scale.invert(_scale(invOffsetX) - offsetX/(zoomScale)), 
 									_scale.domain()[0]]);
-			var invRight = d3.min([	_scale.invert(_scale(invOffsetX) + (width-offsetX)/(scaling)),
+			var invRight = d3.min([	_scale.invert(_scale(invOffsetX) + (width-offsetX)/(zoomScale)),
 									_scale.domain()[1]]);
 			//set xScale
 			xScale.domain([invLeft,invRight]);
@@ -373,9 +390,7 @@
 					height: 20,					
 					class: "incomerect",
 				})
-				.on("click", function(d){	
-					resetHover();
-					
+				.on("click", function(d){						
 					if (filters.Income != d.group){
 						filters.Income = d.group;
 						
@@ -394,6 +409,7 @@
 					} else {
 						filters.Income = "";
 					}
+					updateAll();//resetHover();
 				})
 
 			svg.selectAll("rect.income.zoom")
@@ -738,17 +754,18 @@
 							  " GDP: <strong>$"+parseInt(d.GDP_average)+"</strong>")
 						.style("left", (d3.event.pageX) + 20 + "px")     
 						.style("top", (d3.event.pageY - 20) + "px");						
-						
+
 					hoverCountry = true;
 				})                  
 				.on("mouseout", function(d) {       
 					div.transition()        
 						.duration(transitionDuration)      
 						.style("opacity", 0);   						
-						
+
 					hoverCountry = false;
 				})
-				.on("click", function(d){						
+				.on("click", function(d){	
+					console.log("country-click");
 					if (!zooming && filters.Country != d.Country){
 						filters.Country = d.Country;
 
@@ -837,7 +854,7 @@
 				if (!filters.zoom){
 					document.getElementById("reset").innerHTML="<img src='img/iconmonstr-magnifier-7-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";	
 					filters.zoom = true;
-					setFilter
+					zoomToFilter();					
 				} else {
 					document.getElementById("reset").innerHTML="<img src='img/iconmonstr-magnifier-6-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";
 					filters.zoom = false;
@@ -857,44 +874,6 @@
 					updateAll();
 				}
 				
-			})	
-
-		d3.selectAll("#log")
-			.on("click", function(){
-				if (filters.log){
-					document.getElementById("log").innerHTML="<img src='img/iconmonstr-cursor-horizontal-icon.svg' height='40px' alt='log scale' title='Switch back to distorted view (log scale).'/>"				
-					
-					xScale = d3.scale.linear()
-								.nice()
-								.domain([	d3.min(data, function(d){return parseFloat(getX(d));}),
-											d3.max(data, function(d){return parseFloat(getX(d));})])					
-								.range([margin[0],width-margin[1]]);
-								
-					_scale = (filters.log? d3.scale.log() : d3.scale.linear());												
-								
-					var tickF = d3.format(".1.1s$");
-					xAxis.scale(xScale)
-							.ticks(10)						
-							.tickFormat(function(d) { return "$" + tickF(d); });
-							
-					updateAll();
-					filters.log = false;
-				} else {
-					document.getElementById("log").innerHTML="<img src='img/iconmonstr-cursor-horizontal-2-icon.svg' height='40px' alt='linear scale' title='Switch from distorted view to a view which is true to scale.'/>"				
-					xScale = d3.scale.log()
-								.nice()
-								.domain([	d3.min(data, function(d){return parseFloat(getX(d));}),
-											d3.max(data, function(d){return parseFloat(getX(d));})])
-								.range([margin[0],width-margin[1]]);
-
-					var tickF = d3.format(".1.1s$");								
-					xAxis.scale(xScale)
-						.ticks(10)						
-						.tickFormat(function(d) { return "$" + tickF(d); });
-					
-					updateAll();	
-					filters.log = true;
-				}
 			})	
 		
 		/********************
@@ -965,8 +944,10 @@
 					x: function(d){return xScale(d.x)+5;},
 					width: function(d){return xScale(d.w)-xScale(d.x)-10;},
 					opacity: function(d){
+						tt=d;
 						if (!gdp || yScale(d.y) > height-margin[1]+10){return 0;}
-						else {return 1;}
+						else if (filters.Income == d.group) return 1;
+						else {return .5;}
 					}
 				})	
 
@@ -1025,6 +1006,8 @@
 						if (getX(d) > xScale.domain()[1] || 
 							getX(d) < xScale.domain()[0]){
 							return 0;
+						} else if (filters.Income != "" && incomeGroup(d) != filters.Income){
+							return .1;
 						} else {
 							var sel = d3.select(this);
 							sel.moveToFront();
@@ -1045,6 +1028,11 @@
 							return global_r+groupSteps*d.Layer;
 						else 
 							return 0;
+					},
+					opacity: function(d){
+						if (filters.Income == "") return 1;
+						else if (incomeGroup(d) == filters.Income) return 1;
+						else return 0.3;
 					}
 				})
 				.each("end", function(){zooming = false});				
@@ -1175,15 +1163,22 @@
 			d3.selectAll(".group")
 				.transition()
 				.duration(transitionDuration)
-				.attr("r", function(_d){						
-					var sel = d3.select(this);
-					sel.moveToFront();
+				.attr({
+					r: function(_d){						
+						var sel = d3.select(this);
+						sel.moveToFront();
 					
-					if (!filters.pie && filters[_d.Group]) return _d.Layer*groupSteps+global_r;
-					else return 0;
-				})
-				.attr("fill", function(_d){
-					return color(_d.GroupIdx);
+						if (!filters.pie && filters[_d.Group]) return _d.Layer*groupSteps+global_r;
+						else return 0;
+						},
+					fill: function(_d){
+						return color(_d.GroupIdx);
+					},
+					opacity: function(d){
+						if (filters.Income == "") return 1;
+						else if (incomeGroup(d) == filters.Income) return 1;
+						else return 0.3;
+					}
 				});
 
 			d3.selectAll(".country")
@@ -1455,22 +1450,37 @@
 		}
 		
 		function zoomToFilter(){			
-			filters.European_Union=d.European_Union;
-			filters.African_Union=d.African_Union;
-			filters.OECD=d.OECD;
-			filters.NAFTA=d.NAFTA;
-			filters.MERCOSUR=d.MERCOSUR;
-			filters.OIC=d.OIC;
-			filters.Arab_League=d.Arab_League;
-			filters.ECO=d.ECO;
-			
-			var activeData = data.filter(function(_d){return isActive(_d,d);});
+			var activeData = data.filter(function(d)
+			{
+				return (
+					(
+					 (
+						(filters.European_Union && bl(d.European_Union)) ||
+						(filters.African_Union && bl(d.African_Union)) ||
+						(filters.OECD && bl(d.OECD)) ||
+						(filters.NAFTA && bl(d.NAFTA)) ||
+						(filters.MERCOSUR && bl(d.MERCOSUR)) ||
+						(filters.OIC && bl(d.OIC)) ||
+						(filters.Arab_League && bl(d.Arab_League)) ||
+						(filters.ECO && bl(d.ECO))
+					 ) && (filters.Income == "" || incomeGroup(d) == filters.Income)
+					) || 
+					(filters.Income != "" && incomeGroup(d) == filters.Income)					
+				);
+			});
+								
 			if (activeData.length < 2) return;
 			
-			var yrange = [d3.min(activeData, function(d){return parseFloat(getY(d));}), 
-						 d3.max(activeData, function(d){return parseFloat(getY(d));})];			
-			var xrange = [d3.min(activeData, function(d){return parseFloat(getX(d));}), 
-						 d3.max(activeData, function(d){return parseFloat(getX(d));})];			
+			var yrange = [
+						d3.max([0, d3.min(activeData, function(d){return parseFloat(getY(d));})-10]), 
+						d3.min([100, d3.max(activeData, function(d){return parseFloat(getY(d));})+10])
+						];			
+			var xrange = [
+						d3.max([_scale.domain()[0], d3.min(activeData, function(d){return parseFloat(getX(d));})-500]), 
+						d3.min([_scale.domain()[1], d3.max(activeData, function(d){return parseFloat(getX(d));})+1000])
+						];			
+
+			console.log(yrange[0] +" "+yrange[1] +" "+ xrange[0] +" "+ xrange[1]);
 						 
 			xScale.domain([xrange[0],xrange[1]]);			
 			yScale.domain([yrange[1],yrange[0]]);
