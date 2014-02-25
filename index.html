@@ -82,7 +82,15 @@
 		var hoverCountry = false;
 		
 		var color = function(d){
-			var _color = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666'];
+			var _color = [	'#a6cee3',
+							'#1f78b4',
+							'#b2df8a',
+							'#33a02c',
+							'#fb9a99',
+							'#e31a1c',
+							'#fdbf6f',
+							'#ff7f00',
+							'#cab2d6'];
 			return _color[d];
 		}
 		
@@ -242,7 +250,6 @@
 		
 		function dragged(){	
 			console.log("drag");
-			tt = window.event;
 			
 			//set starting point
 			if (dragStart == -1)
@@ -415,34 +422,6 @@
 					updateAll();//resetHover();
 				})
 
-			svg.selectAll("rect.income.zoom")
-				.data(incomeGroups)
-				.enter()
-				.append("svg:image")
-				.attr({
-					"xlink:href": "img/iconmonstr-fullscreen-icon.svg",
-					x: function(d){
-						return xScale(d.w)-25;
-					},
-					y: 10,
-					width: 20,
-					height: 20,					
-					class: "incomerectzoom",
-				})
-				.on("click", function(d){
-					var _b = !(parseInt(xScale.domain()[0]) == parseInt(d.x) && parseInt(xScale.domain()[1]) == parseInt(d.w));
-					if (_b){
-						xScale.domain([parseInt(d.x),parseInt(d.w)]);
-
-						var activeData = data.filter(function(_d){return getX(_d) > d.x && getX(_d) < d.w});
-						yScale.domain([	d3.max(activeData, function(d){return parseFloat(getY(d));}),
-										d3.min(activeData, function(d){return parseFloat(getY(d));})]);
-						updateAll();
-					}
-					else if (!zooming){ 
-						reset(); 
-					}				
-				})
 
 			svg.selectAll("line.income")
 				.data(incomeGroups)
@@ -454,7 +433,7 @@
 					x2: 0,
 					y2: 40, 
 					class: "incomeline",
-				});		
+				});			
 				
 			svg.selectAll("text.income")
 				.data(incomeGroups)
@@ -593,9 +572,11 @@
 								x: maxX,
 								y: maxY,
 								_x: minX,
-								_y: minY,
+								_y: minY,				
 				});
 			});
+			
+			tt = rectData;
 									
 			svg.selectAll("rect.similar")
 				.data(rectData)
@@ -610,7 +591,7 @@
 														  yScale(d._y)-yScale(d.y)+imgSize[0]*2]);},
 					"stroke": function(d,i){if (d.type == "group") return color(i);										 
 										  else if (d.type == "region") return "pink";},
-					"opacity": 0,
+					"opacity": 1,
 				})
 			
 			svg.selectAll("text.similar")
@@ -894,7 +875,7 @@
 				.attr({
 					"opacity": function(d){						
 						if (filters[d.id] || filters.Region == d.id){											
-							return .7;							
+							return 1;							
 						}
 						else return .1;
 					},			
@@ -902,8 +883,7 @@
 					y: function(d){return yScale(d.y)-imgSize[1];},
 					width: function(d){return xScale(d.x)-xScale(d._x)+imgSize[0]*2;},
 					height: function(d){
-						return d3.min([	height-margin[3]+imgSize[1]-yScale(yScale.domain()[0]),
-										yScale(d._y)-yScale(d.y)+imgSize[0]*2]);},
+						return yScale(d._y)-yScale(d.y)+imgSize[0]*2;},
 					"stroke": function(d,i){	if (d.type == "group") return color(i);										 
 												else if (d.type == "region") return "black dashed";},					
 					"stroke-width":10,
@@ -949,19 +929,11 @@
 					x: function(d){return xScale(d.x)+5;},
 					width: function(d){return xScale(d.w)-xScale(d.x)-10;},
 					opacity: function(d){
-						tt=d;
 						if (!gdp || yScale(d.y) > height-margin[1]+10){return 0;}
 						else if (filters.Income == d.group) return 1;
 						else {return .5;}
 					}
 				})	
-
-			svg.selectAll(".incomerectzoom")			
-				.transition()
-				.duration(transitionDuration)
-				.attr({
-					x: function(d){return xScale(d.w)-25;},
-				})
 				
 			svg.selectAll(".incometext")
 				.transition()
@@ -1158,7 +1130,7 @@
 				.duration(transitionDuration)
 				.attr({
 					"opacity": function(d){
-						if (filters[d.id]) return .7;
+						if (filters[d.id]) return 1;
 						else return 0;
 					},
 					x: function(d){return xScale(d._x)-imgSize[0];},
@@ -1257,7 +1229,7 @@
 				.attr({
 					"opacity": function(_d){
 						if (isSimilar(d,_d) || 
-							(filters[_d.id])) return .7;
+							(filters[_d.id])) return 1;
 						else return 0;
 					},					
 					x: function(d){return xScale(d._x)-imgSize[0];},
@@ -1277,7 +1249,7 @@
 				.attr({
 					"opacity": function(_d){
 						if (isSimilar(d,_d) || 
-							(_d.type == "group" && filters[_d.id])) return .7;
+							(_d.type == "group" && filters[_d.id])) return 1;
 						else return 0;
 					},					
 				})
@@ -1352,7 +1324,7 @@
 					"opacity": function(_d){
 						if (isSimilar(d,_d) || 
 							_d.id == d.Group) 
-							return .7;
+							return 1;
 						else 
 							return 0;
 					},					
@@ -1373,7 +1345,7 @@
 					"opacity": function(_d){						
 						if (isSimilar(d,_d) || 
 							_d.id == d.Group) 
-							return .7;
+							return 1;
 						else 
 							return 0;
 					},					
