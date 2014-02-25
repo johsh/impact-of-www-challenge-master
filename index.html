@@ -108,6 +108,8 @@
 		var data = [];
 		var pie_data=[];
 		var groupConnectionLines=[];
+		var dragStart = -1;		
+		
 		var tt;
 		
 		var div = d3.select("body").append("div")   
@@ -205,24 +207,70 @@
 				.attr("height", height)
 				.on("wheel", function(){hoverCountry = false;})
 		
+		var dragBehavior = d3.behavior.drag()
+							.on("drag", function(){
+							dragged();
+							});
+		dragBehavior.on("dragend", function(){
+							dragStart = -1; 
+							//dragDomainStart == [];}
+						});
+		var dragScale = d3.scale.log()
+						.domain([0,100])
+						.range([margin[0],width-margin[1]]);
+		
+		function dragged(){		
+			//set starting point
+			if (dragStart == -1)
+			{
+				dragStart = d3.event.x;
+				dragScale.domain([xScale.domain()[0], xScale.domain()[1]]);
+			}
+			
+			var _drag = dragStart-d3.event.x;			
+
+			//no transition please
+			var _t = transitionDuration;
+			transitionDuration = 0;
+
+			//set xScale
+			var left = d3.max([dragScale.invert(margin[0]+_drag), _scale.domain()[0]]);
+			var right = d3.min([dragScale.invert(width-margin[1]+_drag), _scale.domain()[1]]);
+			
+			xScale.domain([left, right]);
+			
+			//set yScale
+			var activeData = data.filter(function(_d){return xScale(getX(_d)) > 0 && xScale(getX(_d)) < width;});
+			if (activeData.length > 1) 			
+				yScale.domain([	d3.max(activeData, function(d){return parseFloat(getY(d));}),
+								d3.min(activeData, function(d){return parseFloat(getY(d));})]);			
+						
+			updateAll();
+			transitionDuration = _t;
+		}
+						
 		/** ZOOM **/
 		var zoomBehavior = d3.behavior.zoom()	
 						.scaleExtent([1,4])						
 						.on("zoom", function(e){							
-							if (!hoverCountry || e == "wheel") zoomed();
-							else null;
+							if (!hoverCountry && d3.event.sourceEvent.type == "wheel")
+							{
+								zoomed();
+							}
 						});
 		svg.call(zoomBehavior);
+		svg.call(dragBehavior);
 		
 		var _scale = d3.scale.log()
 						.domain([0,100])
 						.range([margin[0],width-margin[1]]);
 					
 		function zoomed() {
-			if (d3.event.scale == 1){
+			if (d3.event.scale == 1)
+			{
 				d3.event.translate = [0,0]
 			}
-
+						
 			// get offset, invert + scaling factor
 			var offsetX = d3.event.sourceEvent.offsetX;
 			var invOffsetX = xScale.invert(offsetX); //starting point
