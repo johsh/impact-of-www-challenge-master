@@ -5,13 +5,14 @@
 		<meta charset="utf-8" name="author" content="joh schleith">
         <title>Scores in Squares</title>
         <script type="text/javascript" src="d3.v3.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 		<link rel="stylesheet" href="style.css" />
     </head>
     <body>
 	
 	<div id="wrapper">
-		<div id="nav-tools">
-			<div id="reset"><img src="img/iconmonstr-magnifier-6-icon.svg" height="40px" alt="reset" title="Zoom out, reset view."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div>
+		<div id="nav-tools" align="center">
+			<div id="zoom"><img src="img/iconmonstr-magnifier-6-icon.svg" height="40px" alt="zoom in/out" title="Zoom in/out on selected elements."/></div><div id="pie-chart"><img src="img/iconmonstr-pie-chart-2-icon.svg" height="40px" alt="pie charts" title="Switch on additional pie charts, that show the ingredients of the overall web index score."/></div><div id="reset"><img src="img/iconmonstr-x-mark-4-icon.svg" height="40px" alt="reset view" title="Reset to default view - disable all filters"/></div>
 			<p id="acess-electricity"></p>
 			<p id="score-gdp"></p>	
 		</div>
@@ -223,13 +224,23 @@
 
 					zoomed();
 				})		
-				.on("mousedown", function(){
+				.on("mousedown", function(){					
 					dragging = true;
 				})
 				.on("mousemove", function(){
 					window.event.preventDefault();
 					window.event.stopPropagation();				
-					if (dragging) dragged();
+					if (!hoverCountry && dragging) dragged();
+					
+					d3.selectAll(".imgcountry", function(d){
+						console.log(d3.event.pageX + " " + d3.event.pageY);
+						//if (pdist(	[d3.event.pageX,d3.event.pageY],
+							//		[])
+						//xScale()
+						//this.id = "selected";
+						tt=this;
+						//aaa
+					})
 				})
 				.on("mouseup", function(){
 					dragging = false;
@@ -575,9 +586,7 @@
 								_y: minY,				
 				});
 			});
-			
-			tt = rectData;
-									
+												
 			svg.selectAll("rect.similar")
 				.data(rectData)
 				.enter()
@@ -729,19 +738,21 @@
 					width: imgSize[0],
 					height: imgSize[1],		
 					class: "imgcountry",
+					id: "unselected",
 				})
-				.on("mouseover", function(d) {
+				.on("mouseover", function(d) {})
+				.on("mousemove", function(d){
 					div.transition()        
 						.duration(200)      
 						.style("opacity", .9);      
 					div .html("<strong>"+d.Country+"</strong><br/>"+
 							  " Web-Index-Score: <strong>"+d.Web_Index_score+"pt</strong><br/>"+
 							  " GDP: <strong>$"+parseInt(d.GDP_average)+"</strong>")
-						.style("left", (d3.event.pageX) + 20 + "px")     
-						.style("top", (d3.event.pageY - 20) + "px");						
+						.style("left", (d3.event.pageX) + 15 + "px")     
+						.style("top", (d3.event.pageY - 15) + "px");						
 
 					hoverCountry = true;
-				})                  
+				})                 
 				.on("mouseout", function(d) {       
 					div.transition()        
 						.duration(transitionDuration)      
@@ -835,18 +846,32 @@
 				reset();
 			})		
 		
-		d3.selectAll("#reset")
+		d3.selectAll("#zoom")
 			.on("click", function(){
 				if (!filters.zoom){
-					document.getElementById("reset").innerHTML="<img src='img/iconmonstr-magnifier-7-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";	
+					document.getElementById("zoom").innerHTML="<img src='img/iconmonstr-magnifier-7-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";	
 					filters.zoom = true;
 					zoomToFilter();					
 				} else {
-					document.getElementById("reset").innerHTML="<img src='img/iconmonstr-magnifier-6-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";
+					document.getElementById("zoom").innerHTML="<img src='img/iconmonstr-magnifier-6-icon.svg' height='40px' alt='reset' title='Zoom out, reset view.'/>";
 					filters.zoom = false;
 					reset();
 				}				
 			})	
+			
+		d3.selectAll("#reset")
+			.on("click", function(){
+				console.log("reset");
+				
+				$.each(filters, function(d){filters[d] = false;});
+				
+				filters.Region = "";
+				filters.Country="";
+				filters.Income="";
+				
+				updateAll();
+			})	
+			
 
 		d3.selectAll("#pie-chart")
 			.on("click", function(){
@@ -1005,6 +1030,27 @@
 							var sel = d3.select(this);
 							sel.moveToFront();
 							return 1;
+						}
+					},
+					id: function(d){var union = false;
+						if (filters.Country != "" && d.Country == filters.Country ||
+							(filters.European_Union && bl(d.European_Union)) ||
+							(filters.African_Union && bl(d.African_Union)) ||
+							(filters.OECD && bl(d.OECD)) ||
+							(filters.NAFTA && bl(d.NAFTA)) ||
+							(filters.MERCOSUR && bl(d.MERCOSUR)) ||
+							(filters.OIC && bl(d.OIC)) ||
+							(filters.Arab_League && bl(d.Arab_League)) ||
+							(filters.ECO && bl(d.ECO)) ||
+							(filters.G8 && bl(d.G8)))
+							union = true;							
+							
+						if (filters.Country != "" && union ||
+							(filters.Income != "" && incomeGroup(d) == filters.Income)
+							){
+							return "selected";
+						} else {
+							return "unselected";
 						}
 					},
 				});

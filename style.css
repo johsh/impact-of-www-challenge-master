@@ -37,6 +37,7 @@ div{
 	float: left;
 	width: 70px;
 	background: #ffffff;
+	padding: 10px 0px 0px 0px;
 }
 
 #content {
@@ -63,6 +64,21 @@ div{
 	margin-top: 5px;
 }
 
+#zoom,
+#reset,
+#pie-chart {
+	width: 40px;
+	height: 40px;
+}
+
+#zoom:hover,
+#reset:hover,
+#pie-chart:hover {
+	background:lightgrey;
+}
+
+
+
 h1 {
 	font-size: 30pt;
 	line-height: 100%;
@@ -71,16 +87,15 @@ h1 {
 }
 
 a {
-color: black;
-//background: #3398cc;
-padding: 2px;
-font-style: italic;
+	color: black;
+	padding: 2px;
+	font-style: italic;
 
--webkit-transition: all 0.1s ease-in;
-   -moz-transition: all 0.1s ease-in;
-     -o-transition: all 0.1s ease-in;
-	-ms-transition: all 0.1s ease-in;
-        transition: all 0.1s ease-in;
+	-webkit-transition: all 0.1s ease-in;
+	   -moz-transition: all 0.1s ease-in;
+		 -o-transition: all 0.1s ease-in;
+		-ms-transition: all 0.1s ease-in;
+			transition: all 0.1s ease-in;
 }
 
 a:hover { 
@@ -97,18 +112,34 @@ circle {
 circle:hover{
 	fill: orange;
 }
-
+ 
 div.tooltip {
   position: absolute;           
   text-align: left;           
   width: 140px;                  
   height: 50px;                 
-  padding: 2px;             
-  font: 12px sans-serif;        
-  background: lightsteelblue;   
+  padding: 5px;             
+  font: 12px sans-serif; 
+  color: white;
+  background: black;   
   border: 0px;      
-  //border-radius: 8px;           
+  border-radius: 2px;           
   pointer-events: none;         
+}
+
+div.tooltip:after {
+	right: 100%;
+	top: 15px;
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+	border-color: rgba(0, 0, 0, 0);
+	border-right-color: #000000;
+	border-width: 5px;
+	margin-top: -5px;
 }
 
 .xaxis path,
@@ -117,7 +148,7 @@ div.tooltip {
 .yaxis line{
 	fill: none;
 	stroke: black;
-	//shape-rendering: crispEdges;
+	shape-rendering: crispEdges;
 }
 .xaxis text,
 .yaxis text,
