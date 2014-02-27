@@ -201,7 +201,6 @@ div.tooltip:after {
 .zoomrect,
 .similar {
 	stroke-dasharray: 10,10;
-	stroke-width: 10px;
 	stroke-width: 3px;
 	fill: none;
 	shape-rendering: crispEdges;
